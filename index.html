@@ -2,1075 +2,558 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>世界模拟引擎 · World Simulation Engine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>世界模拟引擎 · WSE</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    /* ─── 变量 ─── */
-    :root {
-      --bg:       #0d1117;
-      --bg2:      #0f1923;
-      --bg3:      #111c2a;
-      --cyan:     #00f0ff;
-      --cyan-dim: #00b8c8;
-      --green:    #00ff88;
-      --purple:   #b04aff;
-      --red:      #ff3e5e;
-      --yellow:   #ffd700;
-      --border:   rgba(0,240,255,0.18);
-      --border2:  rgba(0,240,255,0.35);
-      --glow-c:   rgba(0,240,255,0.55);
-      --glow-g:   rgba(0,255,136,0.45);
-      --text:     #c8d8e8;
-      --text-dim: #5a7a8a;
-    }
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html{scroll-behavior:smooth}
-    body{background:var(--bg);color:var(--text);font-family:'Courier New',Courier,monospace;min-height:100vh;overflow-x:hidden}
-
-    /* 扫描线网格 */
-    body::before{content:'';position:fixed;inset:0;z-index:0;
-      background:
-        repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,240,255,.025) 2px,rgba(0,240,255,.025) 4px),
-        repeating-linear-gradient(90deg,transparent,transparent 40px,rgba(0,240,255,.018) 40px,rgba(0,240,255,.018) 41px);
-      pointer-events:none}
-
-    #particle-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.55}
-
-    /* ─── 动画 ─── */
-    @keyframes breathe-cyan{0%,100%{box-shadow:0 0 6px var(--cyan),0 0 18px var(--glow-c)}50%{box-shadow:0 0 14px var(--cyan),0 0 42px var(--glow-c),0 0 70px rgba(0,240,255,.22)}}
-    @keyframes neon-cyan{0%,100%{text-shadow:0 0 6px var(--cyan),0 0 16px var(--cyan)}50%{text-shadow:0 0 10px var(--cyan),0 0 30px var(--cyan),0 0 55px var(--cyan)}}
-    @keyframes neon-green{0%,100%{text-shadow:0 0 5px var(--green),0 0 14px var(--green)}50%{text-shadow:0 0 10px var(--green),0 0 28px var(--green),0 0 50px var(--green)}}
-    @keyframes scanline{0%{top:-10%}100%{top:110%}}
-    @keyframes flicker{0%,99%{opacity:1}80%{opacity:.92}85%{opacity:1}90%{opacity:.88}95%{opacity:1}}
-    @keyframes pulse-border{0%,100%{border-color:rgba(0,240,255,.18)}50%{border-color:rgba(0,240,255,.5)}}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-    @keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-    @keyframes progress-glow{0%,100%{box-shadow:0 0 4px var(--cyan)}50%{box-shadow:0 0 12px var(--cyan),0 0 22px rgba(0,240,255,.4)}}
-    @keyframes countUp{from{opacity:.3;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-
-    /* 流式打字光标 */
-    @keyframes stream-cursor{0%,100%{border-right-color:var(--cyan)}50%{border-right-color:transparent}}
-
-    /* ─── 布局 ─── */
-    #app{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:0 18px 40px}
-    @media(max-width:900px){.grid-main{grid-template-columns:1fr!important}}
-
-    /* ─── Header ─── */
-    header{text-align:center;padding:36px 0 22px;position:relative}
-    .header-badge{display:inline-block;font-size:10px;letter-spacing:4px;color:var(--cyan-dim);border:1px solid var(--border2);padding:3px 14px;border-radius:2px;margin-bottom:12px;animation:breathe-cyan 3s ease-in-out infinite}
-    .header-title{font-size:clamp(24px,4vw,44px);font-weight:900;letter-spacing:5px;color:var(--cyan);animation:neon-cyan 3s ease-in-out infinite,flicker 8s infinite;line-height:1.1}
-    .header-title span{color:var(--green);animation:neon-green 3s ease-in-out infinite .5s}
-    .header-sub{color:var(--text-dim);font-size:12px;letter-spacing:3px;margin-top:8px}
-    .scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.4;animation:scanline 6s linear infinite}
-
-    /* ─── Panel ─── */
-    .panel{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:20px 22px;position:relative;animation:pulse-border 4s ease-in-out infinite;transition:border-color .3s}
-    .panel:hover{border-color:var(--border2)}
-    .panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.6}
-    .panel-title{font-size:11px;letter-spacing:3px;color:var(--cyan);text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px}
-    .panel-title i{font-size:13px}
-
-    /* ─── Forms ─── */
-    label{display:block;font-size:10px;letter-spacing:2px;color:var(--cyan-dim);margin-bottom:5px;text-transform:uppercase}
-    input[type=text],select,textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'Courier New',Courier,monospace;font-size:13px;padding:9px 12px;outline:none;transition:border-color .25s,box-shadow .25s}
-    input[type=text]:focus,select:focus,textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,240,255,.15),0 0 10px rgba(0,240,255,.2)}
-    select option{background:var(--bg3)}
-    textarea{resize:vertical;min-height:68px}
-    input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:linear-gradient(90deg,var(--cyan) 0%,var(--border) 0%);border-radius:4px;outline:none;margin-top:8px}
-    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--cyan);cursor:pointer;box-shadow:0 0 6px var(--cyan),0 0 14px rgba(0,240,255,.4)}
-
-    /* ─── Buttons ─── */
-    .btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:3px;font-family:'Courier New',Courier,monospace;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
-    .btn::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.06);opacity:0;transition:opacity .2s}
-    .btn:hover::after{opacity:1}
-    .btn:active{transform:scale(.97)}
-    .btn-primary{background:linear-gradient(135deg,#005f6b,#003d44);color:var(--cyan);border:1px solid var(--cyan);font-size:12px;padding:11px 24px;animation:breathe-cyan 3s ease-in-out infinite}
-    .btn-primary:hover{background:linear-gradient(135deg,#007a8a,#004f5a);box-shadow:0 0 20px rgba(0,240,255,.4)}
-    .btn-primary:disabled{opacity:.45;cursor:not-allowed;animation:none}
-    .btn-danger{background:linear-gradient(135deg,#4a0020,#300015);color:var(--red);border:1px solid var(--red);font-size:11px;padding:9px 18px;box-shadow:0 0 8px rgba(255,62,94,.2)}
-    .btn-danger:hover{box-shadow:0 0 20px rgba(255,62,94,.45)}
-    .btn-danger:disabled{opacity:.45;cursor:not-allowed}
-    .btn-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border);font-size:10px;padding:7px 14px}
-    .btn-ghost:hover{border-color:var(--cyan);color:var(--cyan)}
-
-    /* ─── Model Selector ─── */
-    .model-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(176,74,255,.1);border:1px solid rgba(176,74,255,.35);border-radius:3px;padding:4px 10px;font-size:11px;color:var(--purple);cursor:pointer;transition:all .2s}
-    .model-badge:hover{box-shadow:0 0 10px rgba(176,74,255,.3)}
-    .model-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:260px;background:var(--bg3);border:1px solid rgba(176,74,255,.4);border-radius:4px;z-index:100;padding:6px 0;box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 20px rgba(176,74,255,.1)}
-    .model-dropdown.open{display:block}
-    .model-option{padding:8px 14px;font-size:11px;color:var(--text);cursor:pointer;transition:background .15s;letter-spacing:1px}
-    .model-option:hover{background:rgba(176,74,255,.15);color:var(--purple)}
-    .model-option.selected{color:var(--cyan);background:rgba(0,240,255,.06)}
-    .model-option .model-tag{display:inline-block;font-size:9px;padding:1px 5px;border-radius:2px;margin-left:6px;background:rgba(176,74,255,.2);color:var(--purple)}
-
-    /* ─── Terminal ─── */
-    .terminal{background:#060c10;border:1px solid var(--border);border-radius:4px;overflow:hidden;display:flex;flex-direction:column;position:relative}
-    .terminal-bar{background:#0a1520;padding:8px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);flex-shrink:0}
-    .t-dot{width:11px;height:11px;border-radius:50%}
-    .t-red{background:#ff3e5e;box-shadow:0 0 5px #ff3e5e}
-    .t-yellow{background:#ffd700;box-shadow:0 0 5px #ffd700}
-    .t-green{background:#00ff88;box-shadow:0 0 5px #00ff88}
-    .t-title{margin-left:6px;font-size:10px;letter-spacing:3px;color:var(--text-dim);flex:1}
-    .terminal-body{flex:1;overflow-y:auto;padding:14px 16px;font-size:13px;line-height:1.85;min-height:340px;max-height:540px;position:relative}
-    .terminal-body::-webkit-scrollbar{width:5px}
-    .terminal-body::-webkit-scrollbar-track{background:transparent}
-    .terminal-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
-
-    /* ─── Stream Preview Layer ─── */
-    /* 覆盖在 terminal-body 上的流式预览遮罩 */
-    #streamPreview{
-      display:none;
-      position:absolute;
-      inset:0;
-      z-index:10;
-      background:rgba(6,12,16,0.72);
-      backdrop-filter:blur(3px);
-      -webkit-backdrop-filter:blur(3px);
-      padding:14px 16px;
-      overflow:hidden;
-      pointer-events:none;
-      flex-direction:column;
-      gap:0;
-    }
-    #streamPreview.active{display:flex}
-
-    /* 顶部状态栏 */
-    .stream-status-bar{
-      display:flex;align-items:center;gap:10px;
-      margin-bottom:10px;flex-shrink:0;
-    }
-    .stream-spinner{
-      width:16px;height:16px;border-radius:50%;
-      border:2px solid rgba(0,240,255,.2);
-      border-top-color:var(--cyan);
-      border-right-color:var(--green);
-      animation:spin .9s linear infinite;
-      flex-shrink:0;
-    }
-    .stream-status-label{
-      font-size:10px;letter-spacing:3px;color:var(--cyan);
-      animation:neon-cyan 2s ease-in-out infinite;
-      flex:1;
-    }
-    .stream-token-count{
-      font-size:10px;color:var(--text-dim);letter-spacing:1px;
-    }
-
-    /* 流式文本区域 — 带模糊渐变遮罩 */
-    .stream-text-wrap{
-      flex:1;
-      overflow:hidden;
-      position:relative;
-    }
-    /* 底部渐变遮罩，制造内容向下消失感 */
-    .stream-text-wrap::after{
-      content:'';
-      position:absolute;bottom:0;left:0;right:0;
-      height:80px;
-      background:linear-gradient(to bottom,transparent,rgba(6,12,16,0.95));
-      pointer-events:none;
-    }
-    /* 顶部渐变遮罩 */
-    .stream-text-wrap::before{
-      content:'';
-      position:absolute;top:0;left:0;right:0;
-      height:30px;
-      background:linear-gradient(to top,transparent,rgba(6,12,16,0.6));
-      pointer-events:none;
-      z-index:1;
-    }
-    #streamRawText{
-      font-size:11px;
-      line-height:1.9;
-      color:rgba(0,240,255,0.55);
-      white-space:pre-wrap;
-      word-break:break-all;
-      /* 模糊效果：整体轻微模糊，营造"解码中"感 */
-      filter:blur(0.6px);
-      overflow:hidden;
-      max-height:100%;
-      /* 让文字从底部向上流动 */
-      display:flex;
-      flex-direction:column;
-      justify-content:flex-end;
-    }
-    /* 高亮特殊 JSON key */
-    #streamRawText .sk{color:rgba(176,74,255,0.7)}   /* key */
-    #streamRawText .sv{color:rgba(0,255,136,0.6)}    /* string val */
-    #streamRawText .sn{color:rgba(255,215,0,0.65)}   /* number */
-
-    /* 底部提示 */
-    .stream-hint{
-      flex-shrink:0;
-      margin-top:8px;
-      font-size:9px;
-      letter-spacing:2px;
-      color:var(--text-dim);
-      text-align:center;
-      border-top:1px solid var(--border);
-      padding-top:7px;
-    }
-    .stream-hint span{
-      display:inline-block;
-      animation:blink 1.2s step-end infinite;
-      color:var(--cyan-dim);
-    }
-
-    /* loading label 在 terminal-bar 旁边 */
-    #streamLabel{
-      font-size:10px;letter-spacing:2px;
-      color:var(--cyan);
-      display:none;
-      align-items:center;gap:6px;
-    }
-    #streamLabel.active{display:flex}
-    #streamLabelText{animation:neon-cyan 2s ease-in-out infinite}
-
-    /* ─── Log Entries ─── */
-    .log-entry{animation:fadeInUp .4s ease forwards;margin-bottom:20px;border-left:2px solid var(--border);padding-left:12px}
-    .log-entry.era-entry{border-left-color:var(--cyan)}
-    .log-entry.system-entry{border-left-color:var(--text-dim)}
-    .log-entry.miracle-entry{border-left-color:var(--purple)}
-    .log-entry.error-entry{border-left-color:var(--red)}
-    .log-era{color:var(--cyan);font-size:12px;letter-spacing:3px;font-weight:bold;animation:neon-cyan 3s ease-in-out infinite}
-    .log-time{color:var(--text-dim);font-size:10px;margin-bottom:4px}
-    .log-section-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-top:6px}
-    .log-section-title.cyan{color:var(--cyan-dim)}
-    .log-section-title.green{color:#00cc6a}
-    .log-section-title.red{color:var(--red)}
-    .log-section-title.yellow{color:var(--yellow)}
-    .log-section-title.purple{color:var(--purple)}
-    .log-content{color:var(--text);font-size:13px;margin-top:2px}
-    .log-error{color:var(--red);font-size:12px}
-    .log-cursor::after{content:'█';animation:blink 1s step-end infinite;color:var(--cyan)}
-
-    /* 进度条 */
-    .progress-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:2px;height:6px;overflow:hidden;margin-top:4px}
-    .progress-bar{height:100%;background:linear-gradient(90deg,var(--cyan),var(--green));border-radius:2px;transition:width 1.2s ease;animation:progress-glow 2s ease-in-out infinite}
-
-    /* boot text */
-    .boot-text{color:var(--text-dim);font-size:11px;line-height:2}
-    .boot-text .ok{color:var(--green)}
-    .boot-text .warn{color:var(--yellow)}
-    .boot-text .tag{display:inline-block;background:rgba(0,240,255,.08);border:1px solid var(--border);padding:0 6px;border-radius:2px;margin-right:4px}
-
-    /* civ stat */
-    .civ-stat{display:flex;flex-direction:column;gap:4px}
-    .civ-stat-label{font-size:9px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase}
-    .civ-stat-value{font-size:20px;font-weight:bold;color:var(--cyan);animation:neon-cyan 3s ease-in-out infinite}
-    .civ-stat-value.green{color:var(--green);animation:neon-green 3s ease-in-out infinite}
-    .civ-stat-value.red{color:var(--red);animation:none}
-    .count-anim{animation:countUp .6s ease}
-
-    /* chips */
-    .preset-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10px;cursor:pointer;transition:all .2s;border:1px solid}
-    .chip-miracle{border-color:rgba(176,74,255,.5);color:var(--purple);background:rgba(176,74,255,.08)}
-    .chip-miracle:hover{background:rgba(176,74,255,.2);box-shadow:0 0 8px rgba(176,74,255,.3)}
-    .chip-disaster{border-color:rgba(255,62,94,.5);color:var(--red);background:rgba(255,62,94,.08)}
-    .chip-disaster:hover{background:rgba(255,62,94,.2);box-shadow:0 0 8px rgba(255,62,94,.3)}
-    .chip-event{border-color:rgba(255,215,0,.5);color:var(--yellow);background:rgba(255,215,0,.08)}
-    .chip-event:hover{background:rgba(255,215,0,.2);box-shadow:0 0 8px rgba(255,215,0,.3)}
-
-    .cyber-divider{height:1px;background:linear-gradient(90deg,transparent,var(--border2),transparent);margin:18px 0}
-
-    /* toast */
-    #toast{position:fixed;bottom:28px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
-    .toast-item{background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:10px 16px;font-size:11px;letter-spacing:1px;color:var(--cyan);box-shadow:0 4px 20px rgba(0,0,0,.5),0 0 10px rgba(0,240,255,.15);animation:fadeInUp .3s ease;max-width:280px}
-    .toast-item.toast-error{color:var(--red);border-color:rgba(255,62,94,.4)}
-    .toast-item.toast-success{color:var(--green);border-color:rgba(0,255,136,.3)}
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+<!-- 粒子画布 -->
 <canvas id="particle-canvas"></canvas>
+<!-- Toast -->
 <div id="toast"></div>
 
-<div id="app">
-  <!-- HEADER -->
-  <header>
-    <div class="scan-line"></div>
-    <div class="header-badge"><i class="fas fa-atom"></i> &nbsp;WSE-v4.2.1 NEURAL CORE ONLINE</div>
-    <h1 class="header-title">世界模拟引擎<br><span>WORLD SIMULATION ENGINE</span></h1>
-    <p class="header-sub">// CAUSALITY MATRIX · CIVILIZATION EVOLUTION PROTOCOL · EPOCH STREAM //</p>
-  </header>
+<!-- ════════════════════════════════════════════════════════
+     SHELL：一级nav + 二级sidebar + 三级sidebar3 + main
+════════════════════════════════════════════════════════ -->
+<div id="shell">
 
-  <!-- 模型选择 -->
-  <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-bottom:14px;">
-    <span style="font-size:10px;letter-spacing:2px;color:var(--text-dim);">AI CORE:</span>
-    <div style="position:relative;" id="modelSelectorWrap">
-      <div class="model-badge" id="modelBadge" onclick="toggleModelDropdown()">
-        <i class="fas fa-microchip"></i>
-        <span id="selectedModelLabel">加载模型中...</span>
-        <i class="fas fa-chevron-down" style="font-size:9px;"></i>
+  <!-- ① 一级导航（图标栏） -->
+  <nav id="nav">
+    <div class="nav-logo"><i class="fas fa-atom"></i></div>
+
+    <div class="nav-item active" data-key="evo" onclick="nav1Click('evo')">
+      <i class="fas fa-globe-asia"></i>
+      <div class="nav-tooltip">演化控制台</div>
+    </div>
+    <div class="nav-item" data-key="token" onclick="nav1Click('token')">
+      <i class="fas fa-coins"></i>
+      <div class="nav-tooltip">Token 统计</div>
+    </div>
+
+    <div class="nav-sep"></div>
+
+    <div class="nav-item" data-key="settings" onclick="nav1Click('settings')">
+      <i class="fas fa-cog"></i>
+      <div class="nav-tooltip">系统设置</div>
+    </div>
+
+    <div class="nav-bottom">
+      <div class="nav-sep"></div>
+      <div class="nav-item" onclick="showToast('WSE v4.2.1 · NEURAL CORE','info')">
+        <i class="fas fa-info-circle"></i>
+        <div class="nav-tooltip">WSE v4.2.1</div>
       </div>
-      <div class="model-dropdown" id="modelDropdown">
-        <div style="padding:6px 14px;font-size:9px;letter-spacing:2px;color:var(--text-dim);border-bottom:1px solid var(--border);margin-bottom:4px;">SELECT AI MODEL</div>
-        <div id="modelList" style="max-height:220px;overflow-y:auto;">
-          <div style="padding:10px 14px;font-size:11px;color:var(--text-dim);">正在同步模型列表...</div>
-        </div>
+    </div>
+  </nav>
+
+  <!-- ② 二级菜单 -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">
+        <i class="fas fa-layer-group" style="font-size:12px;"></i>
+        <span id="sb-title-text">演化控制台</span>
       </div>
+      <div class="sidebar-subtitle">WORLD SIMULATION ENGINE</div>
+    </div>
+    <div class="sidebar-body" id="sb-content">
+      <!-- JS 动态填充 -->
+    </div>
+    <!-- Token 快览（底部常驻） -->
+    <div class="sidebar-footer">
+      <div class="sf-row">
+        <span class="sf-label"><i class="fas fa-arrow-right" style="margin-right:3px;color:var(--green);font-size:8px;"></i>输入</span>
+        <span class="sf-val" id="sf-in">0</span>
+      </div>
+      <div class="sf-row">
+        <span class="sf-label"><i class="fas fa-arrow-left" style="margin-right:3px;color:var(--purple);font-size:8px;"></i>输出</span>
+        <span class="sf-val" id="sf-out">0</span>
+      </div>
+      <div class="sf-row" style="margin-bottom:0;">
+        <span class="sf-label"><i class="fas fa-sigma" style="margin-right:3px;color:var(--cyan);font-size:8px;"></i>合计 Tokens</span>
+        <span class="sf-val" id="sf-tot">0</span>
+      </div>
+      <div class="sf-progress"><div class="sf-progress-bar" id="sf-prog" style="width:0%;"></div></div>
     </div>
   </div>
 
-  <!-- 主布局 -->
-  <div class="grid-main" style="display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start;">
+  <!-- ③ 三级菜单 -->
+  <div id="sidebar3">
+    <div class="s3-header">
+      <div class="s3-title" id="s3-title">文明参数</div>
+      <div class="s3-subtitle" id="s3-sub">INIT CONFIG</div>
+    </div>
+    <div class="s3-body" id="s3-body">
+      <!-- JS 动态填充 -->
+    </div>
+  </div>
 
-    <!-- 左侧面板 -->
-    <div style="display:flex;flex-direction:column;gap:14px;">
+  <!-- MAIN -->
+  <div id="main">
 
-      <!-- 文明参数 -->
-      <div class="panel">
-        <div class="panel-title"><i class="fas fa-globe-asia"></i> 文明初始参数<span style="margin-left:auto;font-size:9px;color:var(--text-dim);letter-spacing:1px;">INIT CONFIG</span></div>
-        <div style="display:flex;flex-direction:column;gap:14px;">
-          <div>
-            <label><i class="fas fa-signature" style="margin-right:4px;font-size:9px;"></i>文明名称</label>
-            <input type="text" id="civName" placeholder="例：亚特兰提斯 · 遗落之城" value="亚特兰提斯" />
-          </div>
-          <div>
-            <label><i class="fas fa-dna" style="margin-right:4px;font-size:9px;"></i>文明类型</label>
-            <select id="civType">
-              <option value="魔法文明">✦ 魔法文明 — 以魔力为能源核心</option>
-              <option value="纯科技文明">⚙ 纯科技文明 — 机械与信息主导</option>
-              <option value="生物进化文明">⬡ 生物进化文明 — 基因工程改造</option>
-              <option value="星际殖民文明">◈ 星际殖民文明 — 太空扩张型</option>
-              <option value="意识上传文明">⬗ 意识上传文明 — 数字化存在</option>
-              <option value="虚空召唤文明">☽ 虚空召唤文明 — 维度穿越掌控</option>
-              <option value="混沌自然文明">❋ 混沌自然文明 — 与自然融合共生</option>
-              <option value="时间操控文明">⧗ 时间操控文明 — 掌控时间流速</option>
-            </select>
-          </div>
-          <div>
-            <label><i class="fas fa-mountain" style="margin-right:4px;font-size:9px;"></i>资源富饶度 &nbsp;<span id="resourceVal" style="color:var(--cyan);">65%</span></label>
-            <input type="range" id="resourceRich" min="0" max="100" value="65" oninput="updateSlider(this,'resourceVal')" />
-          </div>
-          <div>
-            <label><i class="fas fa-users" style="margin-right:4px;font-size:9px;"></i>初始人口规模 &nbsp;<span id="popVal" style="color:var(--cyan);">50%</span></label>
-            <input type="range" id="initPop" min="0" max="100" value="50" oninput="updateSlider(this,'popVal')" />
-          </div>
-          <div>
-            <label><i class="fas fa-shield-alt" style="margin-right:4px;font-size:9px;"></i>军事潜力 &nbsp;<span id="milVal" style="color:var(--cyan);">40%</span></label>
-            <input type="range" id="militaryPot" min="0" max="100" value="40" oninput="updateSlider(this,'milVal')" />
-          </div>
-          <div>
-            <label><i class="fas fa-flask" style="margin-right:4px;font-size:9px;"></i>科研/魔法指数 &nbsp;<span id="techVal" style="color:var(--cyan);">55%</span></label>
-            <input type="range" id="techIndex" min="0" max="100" value="55" oninput="updateSlider(this,'techVal')" />
-          </div>
-          <div>
-            <label><i class="fas fa-align-left" style="margin-right:4px;font-size:9px;"></i>世界背景设定（可选）</label>
-            <textarea id="worldBg" placeholder="描述该世界的特殊背景、地理环境或神话体系...&#10;例：这是一个被三颗恒星照耀的三体世界，海洋覆盖90%面积..."></textarea>
-          </div>
-        </div>
+    <!-- Topbar -->
+    <div id="topbar">
+      <!-- 面包屑 -->
+      <div class="topbar-breadcrumb">
+        <i class="fas fa-atom" style="color:var(--cyan-dim);font-size:11px;"></i>
+        <span>WSE</span>
+        <span class="sep">/</span>
+        <span class="cur" id="bc-page">演化控制台</span>
+        <span id="bc-sub" style="color:var(--text-dim);"></span>
       </div>
-
-      <!-- 干预事件 -->
-      <div class="panel">
-        <div class="panel-title"><i class="fas fa-bolt"></i> 神迹 / 灾难干预<span style="margin-left:auto;font-size:9px;color:var(--text-dim);letter-spacing:1px;">EVENT INJECT</span></div>
-        <div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;">
-          <span class="preset-chip chip-miracle" onclick="setIntervention('上帝之手降临，赐予该文明前所未有的神圣启示与超凡力量')"><i class="fas fa-star" style="font-size:9px;"></i> 神圣启示</span>
-          <span class="preset-chip chip-miracle" onclick="setIntervention('一场无声的意识觉醒席卷全族，每个个体突破了认知极限')"><i class="fas fa-brain" style="font-size:9px;"></i> 意识觉醒</span>
-          <span class="preset-chip chip-disaster" onclick="setIntervention('一颗直径5公里的陨石命中文明核心城市，造成毁灭性破坏')"><i class="fas fa-meteor" style="font-size:9px;"></i> 陨石撞击</span>
-          <span class="preset-chip chip-disaster" onclick="setIntervention('一场致命的黑死级瘟疫在全境蔓延，死亡率高达70%')"><i class="fas fa-biohazard" style="font-size:9px;"></i> 黑死瘟疫</span>
-          <span class="preset-chip chip-disaster" onclick="setIntervention('外星入侵者突然出现，技术碾压本土文明，发动全面战争')"><i class="fas fa-rocket" style="font-size:9px;"></i> 外星入侵</span>
-          <span class="preset-chip chip-event" onclick="setIntervention('文明内部爆发意识形态革命，旧权力体系在一夜间土崩瓦解')"><i class="fas fa-fire" style="font-size:9px;"></i> 社会革命</span>
-          <span class="preset-chip chip-event" onclick="setIntervention('偶然发现了超时空传送门，通往一个陌生但资源极其丰沛的新世界')"><i class="fas fa-door-open" style="font-size:9px;"></i> 时空门</span>
-          <span class="preset-chip chip-event" onclick="setIntervention('与另一个高等文明首次建立联系，开启宇宙级外交与文化交流')"><i class="fas fa-satellite" style="font-size:9px;"></i> 星际接触</span>
+      <div class="topbar-right">
+        <!-- Token 快览 badge -->
+        <div class="token-badge" onclick="nav1Click('token')">
+          <i class="fas fa-coins"></i>
+          <span class="tk-val" id="tokenBadgeVal">0</span>
+          <span style="font-size:9px;font-family:var(--font-head);letter-spacing:1px;">TOKENS</span>
         </div>
-        <label><i class="fas fa-edit" style="margin-right:4px;font-size:9px;"></i>自定义干预事件</label>
-        <textarea id="intervention" placeholder="描述即将发生的神迹或灾难...&#10;例：一位拥有预见能力的先知出现，引领文明走向不同命运..." style="min-height:80px;"></textarea>
-        <div style="margin-top:10px;font-size:10px;color:var(--text-dim);"><i class="fas fa-info-circle" style="margin-right:4px;color:var(--cyan-dim);"></i>干预事件将在下次推演时注入世界线</div>
+        <!-- 模型选择器 -->
+        <div class="model-selector-wrap" id="modelSelectorWrap">
+          <div class="model-selector-btn" onclick="toggleModelDropdown()">
+            <i class="fas fa-microchip" style="font-size:11px;flex-shrink:0;"></i>
+            <span class="m-label" id="mLabel">加载中...</span>
+            <i class="fas fa-chevron-down" style="font-size:9px;flex-shrink:0;"></i>
+          </div>
+          <div class="model-dropdown" id="modelDropdown">
+            <div class="md-header">SELECT AI MODEL</div>
+            <div class="model-list" id="modelList">
+              <div style="padding:10px 14px;font-size:13px;color:var(--text-dim);">正在同步模型列表...</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 右侧 -->
-    <div style="display:flex;flex-direction:column;gap:14px;">
+    <!-- Page Content -->
+    <div id="page-content">
 
-      <!-- 文明状态 -->
-      <div class="panel">
-        <div class="panel-title"><i class="fas fa-chart-line"></i> 文明状态矩阵<span style="margin-left:auto;font-size:9px;color:var(--text-dim);letter-spacing:1px;">CIVILIZATION STATUS</span></div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
-          <div class="civ-stat"><div class="civ-stat-label"><i class="fas fa-hourglass-half" style="margin-right:3px;"></i>当前纪元</div><div class="civ-stat-value" id="statEra">—</div></div>
-          <div class="civ-stat"><div class="civ-stat-label"><i class="fas fa-tachometer-alt" style="margin-right:3px;"></i>发展度</div><div class="civ-stat-value green" id="statDev">—</div></div>
-          <div class="civ-stat"><div class="civ-stat-label"><i class="fas fa-exclamation-triangle" style="margin-right:3px;"></i>危机等级</div><div class="civ-stat-value red" id="statCrisis">—</div></div>
-          <div class="civ-stat"><div class="civ-stat-label"><i class="fas fa-layer-group" style="margin-right:3px;"></i>推演轮次</div><div class="civ-stat-value" id="statRound">0</div></div>
-        </div>
-        <div style="margin-top:14px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-            <span style="font-size:9px;letter-spacing:2px;color:var(--text-dim);">CIVILIZATION PROGRESS</span>
-            <span style="font-size:10px;color:var(--green);" id="progressLabel">0%</span>
-          </div>
-          <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%;"></div></div>
-        </div>
-      </div>
+      <!-- ════════ VIEW: 演化控制台 ════════ -->
+      <div class="view active" id="view-evo">
 
-      <!-- 终端 -->
-      <div class="terminal">
-        <div class="terminal-bar">
-          <div class="t-dot t-red"></div>
-          <div class="t-dot t-yellow"></div>
-          <div class="t-dot t-green"></div>
-          <div class="t-title">WSE://CAUSALITY-LOG · EPOCH-STREAM · v4.2.1</div>
-          <!-- 流式状态标签 -->
-          <div id="streamLabel">
-            <div style="width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(0,240,255,.2);border-top-color:var(--cyan);animation:spin .8s linear infinite;"></div>
-            <span id="streamLabelText">STREAMING</span>
-            <span id="streamTokenCountBar" style="color:var(--text-dim);font-size:9px;"></span>
-          </div>
-          <button class="btn btn-ghost" onclick="clearLog()" style="padding:3px 10px;font-size:9px;margin-left:6px;"><i class="fas fa-trash"></i> CLEAR</button>
+        <!-- Header -->
+        <div class="page-header">
+          <div class="scan-line"></div>
+          <div class="header-badge"><i class="fas fa-atom"></i> WSE-v4.2.1 · NEURAL CORE ONLINE</div>
+          <h1 class="header-title">
+            世界模拟引擎
+            <span class="en">WORLD SIMULATION ENGINE</span>
+          </h1>
+          <p class="header-sub">// CAUSALITY MATRIX · EVOLUTION PROTOCOL · EPOCH STREAM //</p>
         </div>
 
-        <!-- 日志内容区 -->
-        <div class="terminal-body" id="terminalBody">
-          <div class="boot-text" id="bootMsg">
-            <div>╔══════════════════════════════════════════════════╗</div>
-            <div>║&nbsp;&nbsp;&nbsp; WORLD SIMULATION ENGINE · BOOT SEQUENCE &nbsp;&nbsp;&nbsp;&nbsp;║</div>
-            <div>╚══════════════════════════════════════════════════╝</div>
-            <br>
-            <div><span class="tag">SYS</span> 初始化因果律矩阵 ........................ <span class="ok">[ OK ]</span></div>
-            <div><span class="tag">SYS</span> 加载时间线渲染器 ........................ <span class="ok">[ OK ]</span></div>
-            <div><span class="tag">SYS</span> 连接神经网络推演核心 ................... <span class="ok">[ OK ]</span></div>
-            <div><span class="tag">SYS</span> 校验量子随机性种子 ..................... <span class="ok">[ OK ]</span></div>
-            <div><span class="tag">NET</span> 同步 AI 模型节点 ....................... <span class="warn">[ PENDING ]</span></div>
-            <br>
-            <div style="color:var(--cyan);">▶ 系统就绪。配置左侧参数后点击「启动演化」。</div>
-            <div style="color:var(--text-dim);">▶ 流式模式已激活 — AI 输出将实时渲染到此终端。</div>
-            <br>
-            <div class="log-cursor" style="color:var(--cyan);">root@WSE:~$ </div>
-          </div>
+        <!-- 主网格 -->
+        <div class="grid-main">
 
-          <!-- ★ 流式预览层 — 覆盖在 terminal-body 内 ★ -->
-          <div id="streamPreview">
-            <div class="stream-status-bar">
-              <div class="stream-spinner"></div>
-              <div class="stream-status-label" id="streamStatusLabel">正在构筑时间线...</div>
-              <div class="stream-token-count" id="streamTokenCount">0 tokens</div>
+          <!-- 左栏 -->
+          <div style="display:flex;flex-direction:column;gap:12px;">
+
+            <!-- 文明参数 -->
+            <div class="panel" id="panel-civ">
+              <button class="collapsible-btn panel-title" onclick="togglePanel('panel-civ')">
+                <i class="fas fa-globe-asia"></i> 文明初始参数
+                <span class="panel-badge">INIT CONFIG</span>
+                <i class="fas fa-chevron-down chev"></i>
+              </button>
+              <div class="coll-body" style="display:flex;flex-direction:column;gap:0;">
+                <div class="form-group">
+                  <label><i class="fas fa-signature"></i> 文明名称</label>
+                  <input type="text" id="civName" placeholder="例：亚特兰提斯 · 遗落之城" value="亚特兰提斯" />
+                </div>
+                <div class="form-group">
+                  <label><i class="fas fa-dna"></i> 文明类型</label>
+                  <select id="civType">
+                    <option value="魔法文明">✦ 魔法文明 — 以魔力为能源核心</option>
+                    <option value="纯科技文明">⚙ 纯科技文明 — 机械与信息主导</option>
+                    <option value="生物进化文明">⬡ 生物进化文明 — 基因工程改造</option>
+                    <option value="星际殖民文明">◈ 星际殖民文明 — 太空扩张型</option>
+                    <option value="意识上传文明">⬗ 意识上传文明 — 数字化存在</option>
+                    <option value="虚空召唤文明">☽ 虚空召唤文明 — 维度穿越掌控</option>
+                    <option value="混沌自然文明">❋ 混沌自然文明 — 与自然融合共生</option>
+                    <option value="时间操控文明">⧗ 时间操控文明 — 掌控时间流速</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label><i class="fas fa-mountain"></i> 资源富饶度</label>
+                  <div class="slider-row">
+                    <input type="range" id="resourceRich" min="0" max="100" value="65" oninput="updateSlider(this,'resourceVal')" />
+                    <span class="slider-val" id="resourceVal">65%</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><i class="fas fa-users"></i> 初始人口规模</label>
+                  <div class="slider-row">
+                    <input type="range" id="initPop" min="0" max="100" value="50" oninput="updateSlider(this,'popVal')" />
+                    <span class="slider-val" id="popVal">50%</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><i class="fas fa-shield-alt"></i> 军事潜力</label>
+                  <div class="slider-row">
+                    <input type="range" id="militaryPot" min="0" max="100" value="40" oninput="updateSlider(this,'milVal')" />
+                    <span class="slider-val" id="milVal">40%</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><i class="fas fa-flask"></i> 科研 / 魔法指数</label>
+                  <div class="slider-row">
+                    <input type="range" id="techIndex" min="0" max="100" value="55" oninput="updateSlider(this,'techVal')" />
+                    <span class="slider-val" id="techVal">55%</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><i class="fas fa-scroll"></i> 世界背景设定（可选）</label>
+                  <textarea id="worldBg" placeholder="描述该世界的特殊背景、地理环境或神话体系...&#10;例：被三颗恒星照耀的三体世界，海洋覆盖 90% 面积..."></textarea>
+                </div>
+              </div>
             </div>
-            <div class="stream-text-wrap">
-              <div id="streamRawText"></div>
+
+            <!-- 干预事件 -->
+            <div class="panel" id="panel-event">
+              <button class="collapsible-btn panel-title" onclick="togglePanel('panel-event')">
+                <i class="fas fa-bolt"></i> 神迹 / 灾难干预
+                <span class="panel-badge">EVENT INJECT</span>
+                <i class="fas fa-chevron-down chev"></i>
+              </button>
+              <div class="coll-body">
+                <div class="chip-row">
+                  <span class="chip chip-m" onclick="setIntervention('上帝之手降临，赐予该文明前所未有的神圣启示与超凡力量')"><i class="fas fa-star"></i> 神圣启示</span>
+                  <span class="chip chip-m" onclick="setIntervention('一场无声的意识觉醒席卷全族，每个个体突破了认知极限')"><i class="fas fa-brain"></i> 意识觉醒</span>
+                  <span class="chip chip-d" onclick="setIntervention('一颗直径5公里的陨石命中文明核心城市，造成毁灭性破坏')"><i class="fas fa-meteor"></i> 陨石撞击</span>
+                  <span class="chip chip-d" onclick="setIntervention('一场致命的黑死级瘟疫在全境蔓延，死亡率高达70%')"><i class="fas fa-biohazard"></i> 黑死瘟疫</span>
+                  <span class="chip chip-d" onclick="setIntervention('外星入侵者突然出现，技术碾压本土文明，发动全面战争')"><i class="fas fa-rocket"></i> 外星入侵</span>
+                  <span class="chip chip-e" onclick="setIntervention('文明内部爆发意识形态革命，旧权力体系在一夜间土崩瓦解')"><i class="fas fa-fire"></i> 社会革命</span>
+                  <span class="chip chip-e" onclick="setIntervention('偶然发现了超时空传送门，通往一个资源极其丰沛的新世界')"><i class="fas fa-door-open"></i> 时空门</span>
+                  <span class="chip chip-e" onclick="setIntervention('与另一个高等文明首次建立联系，开启宇宙级外交与文化交流')"><i class="fas fa-satellite"></i> 星际接触</span>
+                </div>
+                <div class="form-group">
+                  <label><i class="fas fa-pencil-alt"></i> 自定义干预事件</label>
+                  <textarea id="intervention" placeholder="描述即将发生的神迹或灾难...&#10;例：一位拥有预见能力的先知出现，引领文明走向不同命运..." style="min-height:80px;"></textarea>
+                </div>
+                <div class="info-tip"><i class="fas fa-info-circle"></i> 干预事件将在下次推演时注入世界线</div>
+              </div>
             </div>
-            <div class="stream-hint">
-              <span>◈</span> AI 正在实时推演世界线 · 原始数据流解析中 · 请稍候 <span>◈</span>
+
+          </div><!-- /左栏 -->
+
+          <!-- 右栏 -->
+          <div style="display:flex;flex-direction:column;gap:12px;">
+
+            <!-- 状态矩阵 -->
+            <div class="panel" id="civStatusPanel">
+              <div class="panel-title"><i class="fas fa-chart-line"></i> 文明状态矩阵 <span class="panel-badge">CIVILIZATION STATUS</span></div>
+              <div class="stat-grid">
+                <div class="civ-stat">
+                  <div class="civ-stat-label"><i class="fas fa-hourglass-half"></i> 当前纪元</div>
+                  <div class="civ-stat-val" id="statEra">—</div>
+                </div>
+                <div class="civ-stat">
+                  <div class="civ-stat-label"><i class="fas fa-tachometer-alt"></i> 发展度</div>
+                  <div class="civ-stat-val g" id="statDev">—</div>
+                </div>
+                <div class="civ-stat">
+                  <div class="civ-stat-label"><i class="fas fa-exclamation-triangle"></i> 危机等级</div>
+                  <div class="civ-stat-val r" id="statCrisis">—</div>
+                </div>
+                <div class="civ-stat">
+                  <div class="civ-stat-label"><i class="fas fa-layer-group"></i> 推演轮次</div>
+                  <div class="civ-stat-val" id="statRound">0</div>
+                </div>
+              </div>
+              <div class="section-progress">
+                <div class="sp-header">
+                  <span class="sp-hd-label">CIVILIZATION PROGRESS</span>
+                  <span class="sp-hd-val" id="progressLabel">0%</span>
+                </div>
+                <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%;"></div></div>
+              </div>
+            </div>
+
+            <!-- 终端 -->
+            <div class="terminal">
+              <div class="terminal-bar">
+                <div class="t-dot t-r"></div>
+                <div class="t-dot t-y"></div>
+                <div class="t-dot t-g"></div>
+                <div class="t-title">WSE://CAUSALITY-LOG · EPOCH-STREAM · v4.2.1</div>
+                <div class="stream-label" id="streamLabel">
+                  <div class="stream-spinner"></div>
+                  <span>STREAMING</span>
+                  <span id="streamTokenCountBar" style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);"></span>
+                </div>
+                <button class="btn btn-ghost" onclick="clearLog()" style="padding:5px 10px;font-size:9px;margin-left:4px;">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+              <div class="terminal-body" id="terminalBody">
+                <!-- Boot -->
+                <div class="boot-text" id="bootMsg">
+                  <div style="color:var(--cyan-dim);">╔══════════════════════════════════════════════╗</div>
+                  <div style="color:var(--cyan-dim);">║ &nbsp;WORLD SIMULATION ENGINE · BOOT SEQUENCE &nbsp;║</div>
+                  <div style="color:var(--cyan-dim);">╚══════════════════════════════════════════════╝</div>
+                  <br>
+                  <div><span class="boot-tag">SYS</span> 初始化因果律矩阵 ..................... <span class="ok">[ OK ]</span></div>
+                  <div><span class="boot-tag">SYS</span> 加载时间线渲染器 ..................... <span class="ok">[ OK ]</span></div>
+                  <div><span class="boot-tag">SYS</span> 连接神经网络推演核心 ................. <span class="ok">[ OK ]</span></div>
+                  <div><span class="boot-tag">SYS</span> 校验量子随机性种子 ................... <span class="ok">[ OK ]</span></div>
+                  <div><span class="boot-tag">NET</span> 同步 AI 模型节点 ..................... <span class="warn">[ PENDING ]</span></div>
+                  <br>
+                  <div style="font-family:var(--font-ui);font-size:14px;color:var(--cyan);">▶ 系统就绪，配置参数后点击「启动演化」</div>
+                  <div style="font-family:var(--font-ui);font-size:13px;color:var(--text-dim);">▶ 流式模式已激活 — AI 输出将实时渲染至此终端</div>
+                  <br>
+                  <div class="log-cursor" style="font-family:var(--font-mono);color:var(--cyan);font-size:13px;">root@WSE:~$&nbsp;</div>
+                </div>
+                <!-- 流式预览层 -->
+                <div id="streamPreview">
+                  <div class="sp-bar">
+                    <div class="sp-spinner"></div>
+                    <div class="sp-label" id="spStatusLabel">正在构筑时间线...</div>
+                    <div class="sp-count" id="spTokenCount">0 chars</div>
+                  </div>
+                  <div class="sp-wrap"><div id="streamRawText"></div></div>
+                  <div class="sp-hint"><span>◈</span> AI 正在实时推演世界线 · 数据流解析中 <span>◈</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 桌面版操作区 -->
+            <div class="panel" id="action-bar-desktop" style="padding:16px 18px;">
+              <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+                <button class="btn btn-primary" id="startBtn" onclick="startEvolution()" style="flex:1;min-width:140px;">
+                  <i class="fas fa-play-circle" id="startIcon"></i><span id="startBtnText">启动演化</span>
+                </button>
+                <button class="btn btn-primary" id="nextBtn" onclick="nextEpoch()" style="flex:1;min-width:140px;" disabled>
+                  <i class="fas fa-forward"></i><span>推演下一纪元</span>
+                </button>
+                <button class="btn btn-danger" id="injectBtn" onclick="injectEvent()" style="flex:1;min-width:140px;" disabled>
+                  <i class="fas fa-bolt"></i><span>注入干预事件</span>
+                </button>
+                <button class="btn btn-ghost" onclick="resetAll()" style="min-width:88px;">
+                  <i class="fas fa-redo"></i> RESET
+                </button>
+              </div>
+              <div class="footer-info">
+                <i class="fas fa-wifi" style="margin-right:4px;color:var(--cyan-dim);"></i>
+                STREAM MODE · AI CORE: <span id="footerModel">—</span> · EPOCHS: <em id="footerEpochs">0</em>
+              </div>
+            </div>
+
+          </div><!-- /右栏 -->
+        </div><!-- /grid-main -->
+      </div><!-- /view-evo -->
+
+      <!-- ════════ VIEW: Token 统计 ════════ -->
+      <div class="view" id="view-token">
+
+        <div style="margin-bottom:20px;">
+          <div style="font-family:var(--font-head);font-size:11px;letter-spacing:3px;color:var(--text-dim);margin-bottom:6px;">TOKEN STATISTICS</div>
+          <div style="font-family:var(--font-head);font-size:24px;font-weight:700;color:var(--cyan);animation:neon-c 3s ease-in-out infinite;">消耗统计仪表盘</div>
+        </div>
+
+        <!-- 概要卡片 -->
+        <div class="token-panel">
+          <div class="tk-card">
+            <div class="tk-card-label"><i class="fas fa-arrow-right" style="margin-right:4px;color:var(--green);"></i>输入 Tokens</div>
+            <div class="tk-card-val" id="tk-in-val">0</div>
+            <div class="tk-card-sub">PROMPT TOKENS</div>
+          </div>
+          <div class="tk-card">
+            <div class="tk-card-label"><i class="fas fa-arrow-left" style="margin-right:4px;color:var(--purple);"></i>输出 Tokens</div>
+            <div class="tk-card-val p" id="tk-out-val">0</div>
+            <div class="tk-card-sub">COMPLETION TOKENS</div>
+          </div>
+          <div class="tk-card">
+            <div class="tk-card-label"><i class="fas fa-sigma" style="margin-right:4px;color:var(--cyan);"></i>合计 Tokens</div>
+            <div class="tk-card-val" id="tk-tot-val">0</div>
+            <div class="tk-card-sub">TOTAL TOKENS</div>
+          </div>
+          <div class="tk-card">
+            <div class="tk-card-label"><i class="fas fa-chart-bar" style="margin-right:4px;color:var(--yellow);"></i>平均 / 纪元</div>
+            <div class="tk-card-val g" id="tk-avg-val">0</div>
+            <div class="tk-card-sub">AVG PER EPOCH</div>
+          </div>
+          <div class="tk-card">
+            <div class="tk-card-label"><i class="fas fa-layer-group" style="margin-right:4px;color:var(--cyan);"></i>推演轮次</div>
+            <div class="tk-card-val" id="tk-epoch-val">0</div>
+            <div class="tk-card-sub">TOTAL EPOCHS</div>
+          </div>
+          <div class="tk-card">
+            <div class="tk-card-label"><i class="fas fa-clock" style="margin-right:4px;color:var(--text-dim);"></i>会话时长</div>
+            <div class="tk-card-val g" id="tk-time-val">0s</div>
+            <div class="tk-card-sub">SESSION ELAPSED</div>
+          </div>
+        </div>
+
+        <!-- 历史记录表格 -->
+        <div class="tk-history">
+          <div class="tk-history-header">
+            <i class="fas fa-history" style="color:var(--cyan-dim);"></i>
+            <span class="tk-history-title">调用历史记录</span>
+            <span style="font-family:var(--font-head);font-size:9px;letter-spacing:1.5px;color:var(--text-dim);">CALL HISTORY</span>
+          </div>
+          <!-- 表头 -->
+          <div class="tk-row header">
+            <span>#</span>
+            <span>模型</span>
+            <span>输入</span>
+            <span class="tk-hide">输出</span>
+            <span>合计</span>
+            <span class="tk-hide">时间</span>
+          </div>
+          <div class="tk-history-body" id="tk-tbody">
+            <div class="tk-empty">
+              <i class="fas fa-hourglass" style="margin-right:8px;color:var(--text-dim);"></i>
+              暂无推演记录，启动演化后将在此显示
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 控制区 -->
-      <div class="panel" style="padding:16px 20px;">
-        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
-          <button class="btn btn-primary" id="startBtn" onclick="startEvolution()" style="flex:1;min-width:160px;justify-content:center;">
-            <i class="fas fa-play-circle" id="startIcon"></i><span id="startBtnText">启&nbsp;动&nbsp;演&nbsp;化</span>
-          </button>
-          <button class="btn btn-primary" id="nextBtn" onclick="nextEpoch()" style="flex:1;min-width:160px;justify-content:center;" disabled>
-            <i class="fas fa-forward"></i><span>推&nbsp;演&nbsp;下&nbsp;一&nbsp;纪&nbsp;元</span>
-          </button>
-          <button class="btn btn-danger" id="injectBtn" onclick="injectEvent()" style="flex:1;min-width:160px;justify-content:center;" disabled>
-            <i class="fas fa-bolt"></i><span>注&nbsp;入&nbsp;干&nbsp;预&nbsp;事&nbsp;件</span>
-          </button>
-          <button class="btn btn-ghost" onclick="resetAll()" style="min-width:100px;justify-content:center;">
-            <i class="fas fa-redo"></i> RESET
-          </button>
+        <!-- 底部提示 -->
+        <div style="margin-top:16px;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-family:var(--font-head);font-size:10px;letter-spacing:2px;color:var(--text-dim);margin-bottom:8px;">费用估算（仅供参考）</div>
+          <div style="font-family:var(--font-ui);font-size:13px;color:var(--text-mid);line-height:1.8;">
+            Token 计费因模型而异。本工具使用免费 API 端点（<span style="color:var(--cyan);">sk-free</span>），实际不产生费用。
+            统计数据为近似估算值，输入 token 数基于上下文字符数 ÷ 4 估算，输出 token 数来自流式响应实时累计。
+          </div>
         </div>
-        <div style="margin-top:10px;font-size:10px;color:var(--text-dim);text-align:center;letter-spacing:1px;">
-          <i class="fas fa-wifi" style="margin-right:4px;color:var(--cyan-dim);"></i>
-          STREAM MODE ACTIVE &nbsp;|&nbsp; AI CORE: <span id="footerModel" style="color:var(--purple);">—</span> &nbsp;|&nbsp;
-          EPOCHS: <span id="footerEpochs" style="color:var(--cyan);">0</span>
-        </div>
-      </div>
 
-    </div>
+      </div><!-- /view-token -->
+
+      <!-- ════════ VIEW: 系统设置 ════════ -->
+      <div class="view" id="view-settings">
+
+        <div style="margin-bottom:20px;">
+          <div style="font-family:var(--font-head);font-size:11px;letter-spacing:3px;color:var(--text-dim);margin-bottom:6px;">SYSTEM SETTINGS</div>
+          <div style="font-family:var(--font-head);font-size:24px;font-weight:700;color:var(--cyan);animation:neon-c 3s ease-in-out infinite;">系统设置</div>
+        </div>
+
+        <!-- API 设置 -->
+        <div class="panel settings-section">
+          <div class="panel-title"><i class="fas fa-plug"></i> API 端点配置</div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Base URL</div>
+              <div class="settings-row-sub">OpenAI 兼容接口基础地址</div>
+            </div>
+            <span class="settings-val">https://ai.hhhl.cc</span>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Endpoint</div>
+              <div class="settings-row-sub">聊天补全接口</div>
+            </div>
+            <span class="settings-val">/v1/chat/completions</span>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">API Key</div>
+              <div class="settings-row-sub">鉴权密钥（已内置）</div>
+            </div>
+            <span class="settings-val">sk-free</span>
+          </div>
+          <div class="settings-row" style="border-bottom:none;">
+            <div>
+              <div class="settings-row-label">Stream Mode</div>
+              <div class="settings-row-sub">实时流式输出</div>
+            </div>
+            <span class="settings-val" style="color:var(--green);">已启用 ✓</span>
+          </div>
+        </div>
+
+        <!-- 模型设置 -->
+        <div class="panel settings-section">
+          <div class="panel-title"><i class="fas fa-microchip"></i> 模型配置</div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">默认模型</div>
+              <div class="settings-row-sub">系统启动时自动选中的模型</div>
+            </div>
+            <span class="settings-val" style="color:var(--purple);">gpt-5.5</span>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Temperature</div>
+              <div class="settings-row-sub">创意温度（越高越发散）</div>
+            </div>
+            <span class="settings-val">0.88</span>
+          </div>
+          <div class="settings-row" style="border-bottom:none;">
+            <div>
+              <div class="settings-row-label">Max Tokens</div>
+              <div class="settings-row-sub">单次最大输出 token 数</div>
+            </div>
+            <span class="settings-val">1400</span>
+          </div>
+        </div>
+
+        <!-- 提示词 -->
+        <div class="panel settings-section">
+          <div class="panel-title"><i class="fas fa-code"></i> System Prompt 预览</div>
+          <div style="background:var(--bg4);border:1px solid var(--border);border-radius:5px;padding:14px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);line-height:1.8;max-height:200px;overflow-y:auto;white-space:pre-wrap;">你是一个世界模拟引擎（World Simulation Engine），根据用户给出的文明初始条件，严密、逻辑清晰且充满史诗感地推演该世界接下来的发展历程。
+
+每次推演请严格按照以下JSON格式输出：
+{
+  "era": "纪元X · 时代名称",
+  "year_range": "年代范围",
+  "core_event": "核心事件描述",
+  "dev_progress": 0-100,
+  "crisis": "潜在危机",
+  "crisis_level": "LOW|MEDIUM|HIGH|CRITICAL",
+  "achievement": "文明成就",
+  "population": "人口估算"
+}</div>
+        </div>
+
+        <!-- 关于 -->
+        <div class="panel">
+          <div class="panel-title"><i class="fas fa-info-circle"></i> 关于 WSE</div>
+          <div style="font-family:var(--font-ui);font-size:13px;color:var(--text-mid);line-height:1.9;">
+            <div style="margin-bottom:8px;">
+              <span style="font-family:var(--font-head);color:var(--cyan);letter-spacing:2px;">WSE v4.2.1</span>
+              &nbsp;·&nbsp; World Simulation Engine
+            </div>
+            <div>基于 OpenAI 兼容 API 的 AI 驱动世界演化引擎。支持多文明类型、干预事件注入、实时流式推演与 Token 消耗统计。</div>
+            <div style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+              HTML + CSS + JS · 三文件分离 · 纯前端无后端 · 赛博朋克 UI
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /view-settings -->
+
+    </div><!-- /page-content -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- ════ 移动端底部操作栏 ════ -->
+<div id="action-bar-mobile">
+  <div class="ab-row">
+    <button class="btn btn-primary" id="startBtnM" onclick="startEvolution()">
+      <i class="fas fa-play-circle" id="startIconM"></i><span id="startBtnTextM">启动演化</span>
+    </button>
+    <button class="btn btn-primary" id="nextBtnM" onclick="nextEpoch()" disabled>
+      <i class="fas fa-forward"></i><span>下一纪元</span>
+    </button>
+  </div>
+  <div class="ab-row3">
+    <button class="btn btn-danger" id="injectBtnM" onclick="injectEvent()" disabled style="font-size:10px;">
+      <i class="fas fa-bolt"></i><span>注入事件</span>
+    </button>
+    <button class="btn btn-ghost" onclick="resetAll()" style="font-size:10px;">
+      <i class="fas fa-redo"></i> RESET
+    </button>
+    <button class="btn btn-ghost" onclick="clearLog()" style="font-size:10px;">
+      <i class="fas fa-trash"></i> CLEAR
+    </button>
+  </div>
+  <div class="ab-footer">
+    <i class="fas fa-wifi" style="color:var(--cyan-dim);"></i>
+    <span id="footerModelM" style="color:var(--purple);">—</span>
+    &nbsp;|&nbsp; EPOCHS: <em style="color:var(--cyan);font-style:normal;" id="footerEpochsM">0</em>
   </div>
 </div>
 
-<script>
-// ════════════════════════════════════════════════
-//  CONFIG
-// ════════════════════════════════════════════════
-const API_BASE = 'https://ai.hhhl.cc';
-const API_KEY  = 'sk-free';
-
-const SYSTEM_PROMPT = `你是一个世界模拟引擎（World Simulation Engine），根据用户给出的文明初始条件，严密、逻辑清晰且充满史诗感地推演该世界接下来的发展历程。
-
-每次推演请严格按照以下JSON格式输出（不要包含任何额外说明或markdown代码块标记，直接输出纯JSON）：
-{
-  "era": "纪元X · 时代名称",
-  "year_range": "推算的年代范围，如：公元前3000年 - 公元前2500年",
-  "core_event": "核心事件的详细描述（200字以上，充满史诗感）",
-  "dev_progress": 数字（0-100，代表文明发展百分比）,
-  "crisis": "当前潜在危机描述（100字左右）",
-  "crisis_level": "LOW / MEDIUM / HIGH / CRITICAL",
-  "achievement": "本纪元最重要的文明成就",
-  "population": "估算人口（如：约200万）"
-}`;
-
-const STREAM_STATUS_TEXTS = [
-  '正在构筑时间线...',
-  '正在计算因果律...',
-  '推演历史节点...',
-  '同步量子随机性...',
-  '编织文明命运...',
-  '折叠时空维度...',
-  '激活史诗引擎...',
-  '注入世界线参数...',
-];
-
-// ════════════════════════════════════════════════
-//  STATE
-// ════════════════════════════════════════════════
-const state = {
-  models: [],
-  selectedModel: '',
-  isRunning: false,
-  epoch: 0,
-  history: [],
-  civStarted: false,
-  pendingIntervention: '',
-};
-
-// ════════════════════════════════════════════════
-//  粒子系统
-// ════════════════════════════════════════════════
-(function initParticles() {
-  const canvas = document.getElementById('particle-canvas');
-  const ctx    = canvas.getContext('2d');
-  const COLORS = ['#00f0ff','#00ff88','#b04aff','#ffd700'];
-  let particles = [];
-
-  const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight; };
-  window.addEventListener('resize', resize); resize();
-
-  for (let i = 0; i < 80; i++) particles.push({
-    x: Math.random()*innerWidth, y: Math.random()*innerHeight,
-    r: Math.random()*1.5+0.3,
-    dx: (Math.random()-.5)*.35, dy: (Math.random()-.5)*.35,
-    color: COLORS[Math.floor(Math.random()*COLORS.length)],
-    alpha: Math.random()*.5+.1,
-  });
-
-  (function draw() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    particles.forEach(p => {
-      p.x += p.dx; p.y += p.dy;
-      if (p.x<0) p.x=canvas.width; if (p.x>canvas.width) p.x=0;
-      if (p.y<0) p.y=canvas.height; if (p.y>canvas.height) p.y=0;
-      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-      ctx.fillStyle = p.color; ctx.globalAlpha = p.alpha; ctx.fill();
-    });
-    for (let i=0;i<particles.length;i++) for (let j=i+1;j<particles.length;j++) {
-      const dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
-      const d=Math.sqrt(dx*dx+dy*dy);
-      if (d<100) {
-        ctx.beginPath(); ctx.moveTo(particles[i].x,particles[i].y); ctx.lineTo(particles[j].x,particles[j].y);
-        ctx.strokeStyle=particles[i].color; ctx.globalAlpha=(1-d/100)*.12; ctx.lineWidth=.5; ctx.stroke();
-      }
-    }
-    ctx.globalAlpha=1; requestAnimationFrame(draw);
-  })();
-})();
-
-// ════════════════════════════════════════════════
-//  Slider
-// ════════════════════════════════════════════════
-function updateSlider(input, labelId) {
-  document.getElementById(labelId).textContent = input.value+'%';
-  input.style.background = `linear-gradient(90deg,var(--cyan) ${input.value}%,var(--border) ${input.value}%)`;
-}
-['resourceRich','initPop','militaryPot','techIndex'].forEach(id => {
-  const el = document.getElementById(id);
-  el.style.background = `linear-gradient(90deg,var(--cyan) ${el.value}%,var(--border) ${el.value}%)`;
-});
-
-// ════════════════════════════════════════════════
-//  Model Dropdown
-// ════════════════════════════════════════════════
-function toggleModelDropdown() { document.getElementById('modelDropdown').classList.toggle('open'); }
-document.addEventListener('click', e => {
-  if (!document.getElementById('modelSelectorWrap').contains(e.target))
-    document.getElementById('modelDropdown').classList.remove('open');
-});
-
-async function loadModels() {
-  try {
-    const res  = await fetch(`${API_BASE}/v1/models`, { headers: { 'Authorization': `Bearer ${API_KEY}` } });
-    const data = await res.json();
-    const models = (data.data || []).map(m => m.id);
-    state.models = models;
-
-    const listEl = document.getElementById('modelList');
-    if (!models.length) { listEl.innerHTML = '<div style="padding:10px 14px;font-size:11px;color:var(--red);">未能获取模型列表</div>'; return; }
-
-    listEl.innerHTML = '';
-    models.forEach((m, i) => {
-      const div = document.createElement('div');
-      div.className = 'model-option' + (i===0 ? ' selected' : '');
-      const tag = m.includes('gpt-4')?'GPT-4':m.includes('claude')?'CLAUDE':m.includes('gemini')?'GEMINI':m.includes('deepseek')?'DS':'AI';
-      div.innerHTML = `${m} <span class="model-tag">${tag}</span>`;
-      div.onclick = () => selectModel(m, div);
-      listEl.appendChild(div);
-    });
-    selectModel(models[0], listEl.firstChild);
-
-    const bootMsg = document.getElementById('bootMsg');
-    if (bootMsg) bootMsg.innerHTML = bootMsg.innerHTML.replace('[ PENDING ]', '<span class="ok">[ OK ]</span>');
-    showToast(`已同步 ${models.length} 个 AI 核心`, 'success');
-  } catch(e) {
-    document.getElementById('modelList').innerHTML = '<div style="padding:10px 14px;font-size:11px;color:var(--red);">网络异常，无法获取模型</div>';
-    showToast('模型同步失败', 'error');
-  }
-}
-
-function selectModel(modelId, el) {
-  state.selectedModel = modelId;
-  document.getElementById('selectedModelLabel').textContent = modelId;
-  document.getElementById('footerModel').textContent = modelId;
-  document.querySelectorAll('.model-option').forEach(o => o.classList.remove('selected'));
-  if (el) el.classList.add('selected');
-  document.getElementById('modelDropdown').classList.remove('open');
-}
-
-// ════════════════════════════════════════════════
-//  Toast
-// ════════════════════════════════════════════════
-function showToast(msg, type='info') {
-  const toast = document.getElementById('toast');
-  const item  = document.createElement('div');
-  item.className = `toast-item toast-${type==='error'?'error':type==='success'?'success':''}`;
-  item.innerHTML = `<i class="fas fa-${type==='error'?'exclamation-circle':type==='success'?'check-circle':'info-circle'}" style="margin-right:6px;"></i>${msg}`;
-  toast.appendChild(item);
-  setTimeout(() => { item.style.opacity='0'; item.style.transition='opacity .4s'; setTimeout(()=>item.remove(),400); }, 3000);
-}
-
-// ════════════════════════════════════════════════
-//  Stream Preview UI
-// ════════════════════════════════════════════════
-let statusInterval = null;
-let streamBuffer = '';   // 累积原始流文本
-let tokenCount   = 0;
-
-function showStreamPreview() {
-  const preview = document.getElementById('streamPreview');
-  preview.classList.add('active');
-  document.getElementById('streamLabel').classList.add('active');
-  document.getElementById('streamRawText').innerHTML = '';
-  document.getElementById('streamTokenCount').textContent = '0 tokens';
-  document.getElementById('streamTokenCountBar').textContent = '';
-  streamBuffer = '';
-  tokenCount   = 0;
-
-  // 轮换状态文案
-  let si = 0;
-  document.getElementById('streamStatusLabel').textContent = STREAM_STATUS_TEXTS[0];
-  statusInterval = setInterval(() => {
-    si = (si+1) % STREAM_STATUS_TEXTS.length;
-    document.getElementById('streamStatusLabel').textContent = STREAM_STATUS_TEXTS[si];
-  }, 2000);
-}
-
-function hideStreamPreview() {
-  clearInterval(statusInterval);
-  const preview = document.getElementById('streamPreview');
-  // 淡出动画
-  preview.style.transition = 'opacity .5s ease';
-  preview.style.opacity = '0';
-  document.getElementById('streamLabel').classList.remove('active');
-  setTimeout(() => {
-    preview.classList.remove('active');
-    preview.style.opacity = '';
-    preview.style.transition = '';
-  }, 500);
-}
-
-/**
- * 将原始 JSON 片段渲染到预览区（带简单语法高亮 + 模糊）
- * 每次新增 chunk，追加到 streamBuffer，重新渲染最后 N 行
- */
-function appendStreamChunk(chunk) {
-  streamBuffer += chunk;
-  tokenCount   += chunk.length; // 粗略估算
-
-  // 更新 token 计数
-  document.getElementById('streamTokenCount').textContent = `~${tokenCount} chars`;
-  document.getElementById('streamTokenCountBar').textContent = `~${tokenCount}`;
-
-  // 简易语法着色：key、字符串值、数字
-  const colored = escapeHtml(streamBuffer)
-    .replace(/"([^"]+)"(\s*:)/g, '<span class="sk">"$1"</span>$2')
-    .replace(/:\s*"([^"]*)"/g, ': <span class="sv">"$1"</span>')
-    .replace(/:\s*(\d+)/g, ': <span class="sn">$1</span>');
-
-  const el = document.getElementById('streamRawText');
-  el.innerHTML = colored;
-
-  // 自动滚动到底部（让最新字符始终可见）
-  const wrap = el.parentElement;
-  wrap.scrollTop = wrap.scrollHeight;
-
-  // 同步滚动终端日志区（让用户感知有内容在更新）
-  const body = document.getElementById('terminalBody');
-  body.scrollTop = body.scrollHeight;
-}
-
-function escapeHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ════════════════════════════════════════════════
-//  流式 API 调用
-// ════════════════════════════════════════════════
-async function callAIStream(messages) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 90000);
-
-  const res = await fetch(`${API_BASE}/v1/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-    body: JSON.stringify({
-      model: state.selectedModel,
-      messages,
-      temperature: 0.88,
-      max_tokens: 1400,
-      stream: true,
-    }),
-    signal: controller.signal,
-  });
-
-  clearTimeout(timeout);
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `HTTP ${res.status}`);
-  }
-
-  // 读取 SSE 流
-  const reader  = res.body.getReader();
-  const decoder = new TextDecoder('utf-8');
-  let   fullContent = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    const text = decoder.decode(value, { stream: true });
-    const lines = text.split('\n');
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed === 'data: [DONE]') continue;
-      if (!trimmed.startsWith('data:')) continue;
-
-      try {
-        const json  = JSON.parse(trimmed.slice(5).trim());
-        const delta = json.choices?.[0]?.delta?.content || '';
-        if (delta) {
-          fullContent += delta;
-          appendStreamChunk(delta);   // 实时更新预览
-        }
-      } catch(_) { /* 忽略解析错误的 chunk */ }
-    }
-  }
-
-  return fullContent;
-}
-
-// ════════════════════════════════════════════════
-//  JSON 解析（容错）
-// ════════════════════════════════════════════════
-function parseAIResponse(raw) {
-  let text = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
-  const s = text.indexOf('{'), e = text.lastIndexOf('}');
-  if (s !== -1 && e !== -1) text = text.slice(s, e+1);
-  return JSON.parse(text);
-}
-
-// ════════════════════════════════════════════════
-//  Prompts
-// ════════════════════════════════════════════════
-function buildInitPrompt() {
-  const name = document.getElementById('civName').value.trim() || '未命名文明';
-  const type = document.getElementById('civType').value;
-  const res  = document.getElementById('resourceRich').value;
-  const pop  = document.getElementById('initPop').value;
-  const mil  = document.getElementById('militaryPot').value;
-  const tech = document.getElementById('techIndex').value;
-  const bg   = document.getElementById('worldBg').value.trim();
-  return `【文明初始参数】
-- 文明名称：${name}
-- 文明类型：${type}
-- 资源富饶度：${res}%
-- 初始人口规模：${pop}%
-- 军事潜力：${mil}%
-- 科研/魔法指数：${tech}%
-${bg?`- 世界背景：${bg}`:''}
-
-请开始推演【纪元一】的历史进程。严格按要求输出纯JSON格式，禁止包含任何多余说明。`;
-}
-
-function buildNextPrompt(intervention) {
-  let p = `请继续推演【纪元${state.epoch+1}】的历史进程，延续上文逻辑。`;
-  if (intervention) p += `\n\n【外部干预事件注入】：${intervention}\n请将此干预事件融入本纪元的历史发展中，产生深远影响。`;
-  p += `\n\n严格输出纯JSON格式，禁止包含额外说明。`;
-  return p;
-}
-
-// ════════════════════════════════════════════════
-//  Log Helpers
-// ════════════════════════════════════════════════
-function appendLog(html, cls='') {
-  const body  = document.getElementById('terminalBody');
-  const entry = document.createElement('div');
-  entry.className = `log-entry ${cls}`;
-  entry.innerHTML = html;
-  body.appendChild(entry);
-  body.scrollTop = body.scrollHeight;
-  return entry;
-}
-function appendSystemLog(msg) {
-  appendLog(`<span style="color:var(--text-dim);font-size:11px;letter-spacing:1px;">
-    <i class="fas fa-chevron-right" style="margin-right:5px;font-size:9px;color:var(--cyan-dim);"></i>${msg}</span>`,'system-entry');
-}
-function appendErrorLog(msg) {
-  appendLog(`<div class="log-error"><i class="fas fa-skull-crossbones" style="margin-right:6px;"></i>因果律武器过载（请求失败）— ${msg}，请重试</div>`,'error-entry');
-}
-
-function renderEpochEntry(data, epochNum) {
-  const crisisColor = {LOW:'var(--green)',MEDIUM:'var(--yellow)',HIGH:'var(--red)',CRITICAL:'var(--red)'}[data.crisis_level]||'var(--text)';
-  return `
-    <div class="log-era">╔═ ${data.era||'纪元 '+epochNum} ══════════════════════════════</div>
-    <div class="log-time">
-      <i class="fas fa-clock" style="margin-right:4px;font-size:9px;"></i>${data.year_range||''}
-      &nbsp;&nbsp;<i class="fas fa-users" style="margin-right:4px;font-size:9px;"></i>人口：${data.population||'未知'}
-    </div>
-    <div class="cyber-divider" style="margin:8px 0;"></div>
-    <div class="log-section-title cyan"><i class="fas fa-scroll" style="margin-right:5px;"></i>【核心事件】</div>
-    <div class="log-content">${data.core_event||''}</div>
-    <div class="log-section-title green" style="margin-top:10px;"><i class="fas fa-trophy" style="margin-right:5px;"></i>【文明成就】</div>
-    <div class="log-content" style="color:var(--green);">${data.achievement||''}</div>
-    <div class="log-section-title yellow" style="margin-top:10px;"><i class="fas fa-chart-bar" style="margin-right:5px;"></i>【文明发展度】</div>
-    <div style="margin-top:4px;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-        <span style="font-size:10px;color:var(--text-dim);">CIVILIZATION PROGRESS</span>
-        <span style="font-size:11px;color:var(--green);">${data.dev_progress||0}%</span>
-      </div>
-      <div class="progress-wrap"><div class="progress-bar" style="width:${data.dev_progress||0}%;"></div></div>
-    </div>
-    <div class="log-section-title red" style="margin-top:10px;">
-      <i class="fas fa-radiation" style="margin-right:5px;"></i>【潜在危机】
-      <span style="margin-left:6px;font-size:9px;padding:1px 6px;border-radius:2px;
-        background:${crisisColor}22;border:1px solid ${crisisColor};color:${crisisColor};">${data.crisis_level||''}</span>
-    </div>
-    <div class="log-content" style="color:#ff8a9a;">${data.crisis||''}</div>
-    <div style="margin-top:10px;color:var(--text-dim);font-size:10px;">╚═══════════════════════════════════════════════════</div>`;
-}
-
-// ════════════════════════════════════════════════
-//  Status Update
-// ════════════════════════════════════════════════
-function updateStatus(data, epochNum) {
-  const era = data.era || `纪元 ${epochNum}`;
-  document.getElementById('statEra').textContent     = era.split('·')[0].trim();
-  document.getElementById('statDev').textContent     = (data.dev_progress||0)+'%';
-  document.getElementById('statCrisis').textContent  = data.crisis_level||'—';
-  document.getElementById('statRound').textContent   = epochNum;
-  document.getElementById('footerEpochs').textContent= epochNum;
-  const pct = data.dev_progress||0;
-  document.getElementById('progressBar').style.width = pct+'%';
-  document.getElementById('progressLabel').textContent = pct+'%';
-  const sd = document.getElementById('statDev');
-  sd.classList.remove('count-anim'); void sd.offsetWidth; sd.classList.add('count-anim');
-}
-
-// ════════════════════════════════════════════════
-//  Buttons
-// ════════════════════════════════════════════════
-function setButtonsState(loading) {
-  document.getElementById('startBtn').disabled   = loading;
-  document.getElementById('nextBtn').disabled    = loading;
-  document.getElementById('injectBtn').disabled  = loading;
-  document.getElementById('startIcon').className = loading ? 'fas fa-spinner fa-spin' : 'fas fa-play-circle';
-  if (!loading && state.civStarted)
-    document.getElementById('startBtnText').textContent = '重\u00a0新\u00a0创\u00a0世';
-}
-
-// ════════════════════════════════════════════════
-//  Core: run one epoch
-// ════════════════════════════════════════════════
-async function runEpoch(messages, epochNum) {
-  showStreamPreview();
-  let raw;
-  try {
-    raw = await callAIStream(messages);
-  } finally {
-    hideStreamPreview();
-  }
-
-  state.history.push(messages[messages.length-1]);                        // user msg
-  state.history.push({ role:'assistant', content: raw });                 // assistant
-  if (state.history.length > 20) state.history = state.history.slice(-20);
-
-  const data = parseAIResponse(raw);
-  appendLog(renderEpochEntry(data, epochNum), 'era-entry');
-  updateStatus(data, epochNum);
-  return data;
-}
-
-// ════════════════════════════════════════════════
-//  startEvolution
-// ════════════════════════════════════════════════
-async function startEvolution() {
-  if (state.isRunning) return;
-  if (!state.selectedModel) { showToast('请先选择 AI 模型','error'); return; }
-
-  const civName = document.getElementById('civName').value.trim()||'未命名文明';
-  state.isRunning = true; state.epoch = 0; state.history = []; state.civStarted = true;
-  setButtonsState(true);
-
-  document.getElementById('terminalBody').innerHTML = '';
-  // 重建 streamPreview（它在 terminalBody 内，清空后需重建）
-  rebuildStreamPreview();
-
-  appendSystemLog(`▶ 创世协议启动 · 文明「${civName}」世界线初始化...`);
-  appendSystemLog(`▶ AI 核心：${state.selectedModel} · 流式模式已就绪`);
-
-  try {
-    const userMsg  = buildInitPrompt();
-    const messages = [
-      { role:'system', content: SYSTEM_PROMPT },
-      { role:'user',   content: userMsg },
-    ];
-    // 在 history 里只存 user 消息（assistant 在 runEpoch 里追加）
-    state.history.push({ role:'user', content: userMsg });
-    state.history.pop(); // 由 runEpoch 重新 push，避免重复
-
-    await runEpoch(messages, 1);
-    state.epoch = 1;
-
-    document.getElementById('nextBtn').disabled  = false;
-    document.getElementById('injectBtn').disabled = false;
-    showToast('纪元一推演完成','success');
-  } catch(e) {
-    hideStreamPreview();
-    appendErrorLog(e.message);
-    showToast('推演失败：'+e.message,'error');
-  } finally {
-    state.isRunning = false;
-    setButtonsState(false);
-  }
-}
-
-// ════════════════════════════════════════════════
-//  nextEpoch
-// ════════════════════════════════════════════════
-async function nextEpoch() {
-  if (state.isRunning || !state.civStarted) return;
-
-  const intervention = state.pendingIntervention || '';
-  state.pendingIntervention = '';
-  state.isRunning = true;
-  setButtonsState(true);
-
-  if (intervention) {
-    appendLog(`
-      <div class="log-section-title purple"><i class="fas fa-bolt" style="margin-right:5px;"></i>【外部干预注入】</div>
-      <div class="log-content" style="color:var(--purple);">${intervention}</div>
-    `,'miracle-entry');
-  }
-
-  try {
-    const userMsg  = buildNextPrompt(intervention);
-    const messages = [
-      { role:'system', content: SYSTEM_PROMPT },
-      ...state.history,
-      { role:'user',   content: userMsg },
-    ];
-
-    await runEpoch(messages, state.epoch+1);
-    state.epoch += 1;
-    showToast(`纪元 ${state.epoch} 推演完成`,'success');
-  } catch(e) {
-    hideStreamPreview();
-    appendErrorLog(e.message);
-    showToast('推演失败：'+e.message,'error');
-  } finally {
-    state.isRunning = false;
-    setButtonsState(false);
-    document.getElementById('nextBtn').disabled  = false;
-    document.getElementById('injectBtn').disabled = false;
-  }
-}
-
-// ════════════════════════════════════════════════
-//  重建 streamPreview DOM（清空 terminal-body 后调用）
-// ════════════════════════════════════════════════
-function rebuildStreamPreview() {
-  const body = document.getElementById('terminalBody');
-  const preview = document.createElement('div');
-  preview.id = 'streamPreview';
-  preview.innerHTML = `
-    <div class="stream-status-bar">
-      <div class="stream-spinner"></div>
-      <div class="stream-status-label" id="streamStatusLabel">正在构筑时间线...</div>
-      <div class="stream-token-count" id="streamTokenCount">0 chars</div>
-    </div>
-    <div class="stream-text-wrap">
-      <div id="streamRawText"></div>
-    </div>
-    <div class="stream-hint"><span>◈</span> AI 正在实时推演世界线 · 原始数据流解析中 · 请稍候 <span>◈</span></div>
-  `;
-  body.appendChild(preview);
-}
-
-// ════════════════════════════════════════════════
-//  injectEvent / setIntervention
-// ════════════════════════════════════════════════
-function injectEvent() {
-  const text = document.getElementById('intervention').value.trim();
-  if (!text) { showToast('请先填写干预事件内容','error'); return; }
-  state.pendingIntervention = text;
-  document.getElementById('intervention').value = '';
-  appendLog(`
-    <span style="color:var(--yellow);font-size:11px;letter-spacing:1px;">
-      <i class="fas fa-exclamation-triangle" style="margin-right:5px;"></i>干预事件已注入世界线缓冲区：
-    </span>
-    <div style="color:var(--purple);margin-top:4px;font-size:12px;">"${text}"</div>
-  `,'miracle-entry');
-  showToast('干预事件已注入，推演下一纪元时触发','success');
-}
-function setIntervention(text) {
-  document.getElementById('intervention').value = text;
-  document.getElementById('intervention').focus();
-}
-
-// ════════════════════════════════════════════════
-//  clearLog / resetAll
-// ════════════════════════════════════════════════
-function clearLog() {
-  document.getElementById('terminalBody').innerHTML = '';
-  rebuildStreamPreview();
-  appendSystemLog('日志已清空 · LOG CLEARED');
-}
-
-function resetAll() {
-  Object.assign(state, { epoch:0, history:[], civStarted:false, pendingIntervention:'', isRunning:false });
-  document.getElementById('nextBtn').disabled   = true;
-  document.getElementById('injectBtn').disabled = true;
-  document.getElementById('startBtn').disabled  = false;
-  document.getElementById('startBtnText').textContent = '启\u00a0动\u00a0演\u00a0化';
-  document.getElementById('startIcon').className = 'fas fa-play-circle';
-  ['statEra','statDev','statCrisis'].forEach(id => document.getElementById(id).textContent='—');
-  document.getElementById('statRound').textContent = '0';
-  document.getElementById('progressBar').style.width = '0%';
-  document.getElementById('progressLabel').textContent = '0%';
-  document.getElementById('footerEpochs').textContent = '0';
-  clearLog();
-  showToast('世界线已重置','info');
-}
-
-// ════════════════════════════════════════════════
-//  Init
-// ════════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', loadModels);
-</script>
+<script src="app.js"></script>
 </body>
 </html>
