@@ -4,556 +4,752 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>世界模拟引擎 · WSE</title>
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
+  <canvas id="particle-canvas"></canvas>
+  <div id="toast"></div>
 
-<!-- 粒子画布 -->
-<canvas id="particle-canvas"></canvas>
-<!-- Toast -->
-<div id="toast"></div>
+  <div id="shell">
+    <!-- 一级导航 -->
+    <nav id="nav">
+      <div class="nav-logo">
+        <i class="fas fa-atom"></i>
+      </div>
 
-<!-- ════════════════════════════════════════════════════════
-     SHELL：一级nav + 二级sidebar + 三级sidebar3 + main
-════════════════════════════════════════════════════════ -->
-<div id="shell">
+      <button class="nav-item active" data-view="evo" title="演化控制台">
+        <i class="fas fa-globe-asia"></i>
+        <span class="nav-tooltip">演化控制台</span>
+      </button>
 
-  <!-- ① 一级导航（图标栏） -->
-  <nav id="nav">
-    <div class="nav-logo"><i class="fas fa-atom"></i></div>
+      <button class="nav-item" data-view="token" title="Token 统计">
+        <i class="fas fa-coins"></i>
+        <span class="nav-tooltip">Token 统计</span>
+      </button>
 
-    <div class="nav-item active" data-key="evo" onclick="nav1Click('evo')">
-      <i class="fas fa-globe-asia"></i>
-      <div class="nav-tooltip">演化控制台</div>
-    </div>
-    <div class="nav-item" data-key="token" onclick="nav1Click('token')">
-      <i class="fas fa-coins"></i>
-      <div class="nav-tooltip">Token 统计</div>
-    </div>
-
-    <div class="nav-sep"></div>
-
-    <div class="nav-item" data-key="settings" onclick="nav1Click('settings')">
-      <i class="fas fa-cog"></i>
-      <div class="nav-tooltip">系统设置</div>
-    </div>
-
-    <div class="nav-bottom">
       <div class="nav-sep"></div>
-      <div class="nav-item" onclick="showToast('WSE v4.2.1 · NEURAL CORE','info')">
+
+      <button class="nav-item" data-view="settings" title="系统说明">
         <i class="fas fa-info-circle"></i>
-        <div class="nav-tooltip">WSE v4.2.1</div>
-      </div>
-    </div>
-  </nav>
+        <span class="nav-tooltip">系统说明</span>
+      </button>
 
-  <!-- ② 二级菜单 -->
-  <div id="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-title">
-        <i class="fas fa-layer-group" style="font-size:12px;"></i>
-        <span id="sb-title-text">演化控制台</span>
+      <div class="nav-bottom">
+        <div class="nav-sep"></div>
+        <button class="nav-item" id="navAboutBtn" title="关于">
+          <i class="fas fa-circle-info"></i>
+          <span class="nav-tooltip">WSE v4.2.2</span>
+        </button>
       </div>
-      <div class="sidebar-subtitle">WORLD SIMULATION ENGINE</div>
+    </nav>
+
+    <!-- 二级菜单 -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">
+          <i class="fas fa-layer-group"></i>
+          <span id="sidebarTitle">演化控制台</span>
+        </div>
+        <div class="sidebar-subtitle">WORLD SIMULATION ENGINE</div>
+      </div>
+
+      <div class="sidebar-body" id="sidebarBody"></div>
+
+      <div class="sidebar-footer">
+        <div class="sf-row">
+          <span class="sf-label">
+            <i class="fas fa-arrow-right"></i>
+            输入
+          </span>
+          <span class="sf-val" id="sfInput">0</span>
+        </div>
+
+        <div class="sf-row">
+          <span class="sf-label">
+            <i class="fas fa-arrow-left"></i>
+            输出
+          </span>
+          <span class="sf-val" id="sfOutput">0</span>
+        </div>
+
+        <div class="sf-row">
+          <span class="sf-label">
+            <i class="fas fa-sigma"></i>
+            合计
+          </span>
+          <span class="sf-val" id="sfTotal">0</span>
+        </div>
+
+        <div class="sf-progress">
+          <div class="sf-progress-bar" id="sfProgress"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主区域 -->
+    <main id="main">
+      <!-- 顶栏 -->
+      <header id="topbar">
+        <div class="topbar-breadcrumb">
+          <i class="fas fa-atom"></i>
+          <span>WSE</span>
+          <span class="sep">/</span>
+          <span class="cur" id="breadcrumbPage">演化控制台</span>
+          <span id="breadcrumbSub"></span>
+        </div>
+
+        <div class="topbar-right">
+          <button class="quick-settings-btn" id="quickSettingsBtn" title="快速设置">
+            <i class="fas fa-cog"></i>
+          </button>
+
+          <button class="token-badge" id="tokenBadge" title="查看 Token 统计">
+            <i class="fas fa-coins"></i>
+            <span class="tk-val" id="tokenBadgeValue">0</span>
+            <span>TOKENS</span>
+          </button>
+
+          <div class="model-selector-wrap" id="modelSelectorWrap">
+            <button class="model-selector-btn" id="modelSelectorBtn">
+              <i class="fas fa-microchip"></i>
+              <span class="m-label" id="modelLabel">加载中...</span>
+              <i class="fas fa-chevron-down"></i>
+            </button>
+
+            <div class="model-dropdown" id="modelDropdown">
+              <div class="md-header">SELECT AI MODEL</div>
+              <div class="model-list" id="modelList">
+                <div class="model-loading">正在同步模型列表...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- 页面内容 -->
+      <section id="page-content">
+        <!-- 演化页 -->
+        <div class="view active" id="view-evo">
+          <div class="page-header">
+            <div class="scan-line"></div>
+            <div class="header-badge">
+              <i class="fas fa-atom"></i>
+              WSE-v4.2.2 · NEURAL CORE ONLINE
+            </div>
+
+            <h1 class="header-title">
+              世界模拟引擎
+              <span class="en">WORLD SIMULATION ENGINE</span>
+            </h1>
+
+            <p class="header-sub">
+              // CAUSALITY MATRIX · EVOLUTION PROTOCOL · EPOCH STREAM //
+            </p>
+          </div>
+
+          <div class="grid-main">
+            <!-- 左栏 -->
+            <section class="left-column">
+              <div class="panel" id="panelCivilization">
+                <button class="collapsible-btn panel-title" data-panel-toggle="panelCivilization">
+                  <i class="fas fa-globe-asia"></i>
+                  文明初始参数
+                  <span class="panel-badge">INIT CONFIG</span>
+                  <i class="fas fa-chevron-down chev"></i>
+                </button>
+
+                <div class="coll-body">
+                  <div class="form-group">
+                    <label for="civName">
+                      <i class="fas fa-signature"></i>
+                      文明名称
+                    </label>
+                    <input id="civName" type="text" value="亚特兰提斯" placeholder="例：亚特兰提斯 · 遗落之城" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="civType">
+                      <i class="fas fa-dna"></i>
+                      文明类型
+                    </label>
+                    <select id="civType">
+                      <option value="魔法文明">✦ 魔法文明 — 以魔力为能源核心</option>
+                      <option value="纯科技文明">⚙ 纯科技文明 — 机械与信息主导</option>
+                      <option value="生物进化文明">⬡ 生物进化文明 — 基因工程改造</option>
+                      <option value="星际殖民文明">◈ 星际殖民文明 — 太空扩张型</option>
+                      <option value="意识上传文明">⬗ 意识上传文明 — 数字化存在</option>
+                      <option value="虚空召唤文明">☽ 虚空召唤文明 — 维度穿越掌控</option>
+                      <option value="混沌自然文明">❋ 混沌自然文明 — 与自然融合共生</option>
+                      <option value="时间操控文明">⧗ 时间操控文明 — 掌控时间流速</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="resourceRich">
+                      <i class="fas fa-mountain"></i>
+                      资源富饶度
+                    </label>
+                    <div class="slider-row">
+                      <input id="resourceRich" type="range" min="0" max="100" value="65" />
+                      <span class="slider-val" id="resourceVal">65%</span>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="initPop">
+                      <i class="fas fa-users"></i>
+                      初始人口规模
+                    </label>
+                    <div class="slider-row">
+                      <input id="initPop" type="range" min="0" max="100" value="50" />
+                      <span class="slider-val" id="popVal">50%</span>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="militaryPot">
+                      <i class="fas fa-shield-alt"></i>
+                      军事潜力
+                    </label>
+                    <div class="slider-row">
+                      <input id="militaryPot" type="range" min="0" max="100" value="40" />
+                      <span class="slider-val" id="militaryVal">40%</span>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="techIndex">
+                      <i class="fas fa-flask"></i>
+                      科研 / 魔法指数
+                    </label>
+                    <div class="slider-row">
+                      <input id="techIndex" type="range" min="0" max="100" value="55" />
+                      <span class="slider-val" id="techVal">55%</span>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="worldBackground">
+                      <i class="fas fa-scroll"></i>
+                      世界背景设定
+                    </label>
+                    <textarea id="worldBackground" placeholder="描述该世界的特殊背景、地理环境或神话体系..."></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel" id="panelIntervention">
+                <button class="collapsible-btn panel-title" data-panel-toggle="panelIntervention">
+                  <i class="fas fa-bolt"></i>
+                  神迹 / 灾难干预
+                  <span class="panel-badge">EVENT INJECT</span>
+                  <i class="fas fa-chevron-down chev"></i>
+                </button>
+
+                <div class="coll-body">
+                  <div class="chip-row">
+                    <button class="chip chip-m" data-intervention="上帝之手降临，赐予该文明前所未有的神圣启示与超凡力量">
+                      <i class="fas fa-star"></i>
+                      神圣启示
+                    </button>
+                    <button class="chip chip-m" data-intervention="一场无声的意识觉醒席卷全族，每个个体突破了认知极限">
+                      <i class="fas fa-brain"></i>
+                      意识觉醒
+                    </button>
+                    <button class="chip chip-d" data-intervention="一颗直径5公里的陨石命中文明核心城市，造成毁灭性破坏">
+                      <i class="fas fa-meteor"></i>
+                      陨石撞击
+                    </button>
+                    <button class="chip chip-d" data-intervention="一场致命的黑死级瘟疫在全境蔓延，死亡率高达70%">
+                      <i class="fas fa-biohazard"></i>
+                      黑死瘟疫
+                    </button>
+                    <button class="chip chip-d" data-intervention="外星入侵者突然出现，技术碾压本土文明，发动全面战争">
+                      <i class="fas fa-rocket"></i>
+                      外星入侵
+                    </button>
+                    <button class="chip chip-e" data-intervention="文明内部爆发意识形态革命，旧权力体系在一夜间土崩瓦解">
+                      <i class="fas fa-fire"></i>
+                      社会革命
+                    </button>
+                    <button class="chip chip-e" data-intervention="偶然发现了超时空传送门，通往一个资源极其丰沛的新世界">
+                      <i class="fas fa-door-open"></i>
+                      时空门
+                    </button>
+                    <button class="chip chip-e" data-intervention="与另一个高等文明首次建立联系，开启宇宙级外交与文化交流">
+                      <i class="fas fa-satellite"></i>
+                      星际接触
+                    </button>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="intervention">
+                      <i class="fas fa-pencil-alt"></i>
+                      自定义干预事件
+                    </label>
+                    <textarea id="intervention" placeholder="描述即将发生的神迹或灾难..."></textarea>
+                  </div>
+
+                  <div class="info-tip">
+                    <i class="fas fa-info-circle"></i>
+                    干预事件将在下次推演时注入世界线。
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- 右栏 -->
+            <section class="right-column">
+              <div class="panel" id="civStatusPanel">
+                <div class="panel-title">
+                  <i class="fas fa-chart-line"></i>
+                  文明状态矩阵
+                  <span class="panel-badge">CIVILIZATION STATUS</span>
+                </div>
+
+                <div class="stat-grid">
+                  <div class="civ-stat">
+                    <div class="civ-stat-label">
+                      <i class="fas fa-hourglass-half"></i>
+                      当前纪元
+                    </div>
+                    <div class="civ-stat-val" id="statEra">—</div>
+                  </div>
+
+                  <div class="civ-stat">
+                    <div class="civ-stat-label">
+                      <i class="fas fa-tachometer-alt"></i>
+                      发展度
+                    </div>
+                    <div class="civ-stat-val g" id="statDev">—</div>
+                  </div>
+
+                  <div class="civ-stat">
+                    <div class="civ-stat-label">
+                      <i class="fas fa-exclamation-triangle"></i>
+                      危机等级
+                    </div>
+                    <div class="civ-stat-val r" id="statCrisis">—</div>
+                  </div>
+
+                  <div class="civ-stat">
+                    <div class="civ-stat-label">
+                      <i class="fas fa-layer-group"></i>
+                      推演轮次
+                    </div>
+                    <div class="civ-stat-val" id="statRound">0</div>
+                  </div>
+                </div>
+
+                <div class="section-progress">
+                  <div class="sp-header">
+                    <span class="sp-hd-label">CIVILIZATION PROGRESS</span>
+                    <span class="sp-hd-val" id="progressLabel">0%</span>
+                  </div>
+                  <div class="progress-wrap">
+                    <div class="progress-bar" id="progressBar"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="terminal" id="terminalPanel">
+                <div class="terminal-bar">
+                  <div class="t-dot t-r"></div>
+                  <div class="t-dot t-y"></div>
+                  <div class="t-dot t-g"></div>
+                  <div class="t-title">WSE://CAUSALITY-LOG · EPOCH-STREAM · v4.2.2</div>
+
+                  <div class="stream-label" id="streamLabel">
+                    <div class="stream-spinner"></div>
+                    <span>STREAMING</span>
+                  </div>
+
+                  <button class="btn btn-ghost btn-mini" id="clearLogBtn" title="清空日志">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+
+                <div class="terminal-body" id="terminalBody">
+                  <div class="boot-text" id="bootMessage">
+                    <div class="boot-cyan">╔══════════════════════════════════════════════╗</div>
+                    <div class="boot-cyan">║ WORLD SIMULATION ENGINE · BOOT SEQUENCE     ║</div>
+                    <div class="boot-cyan">╚══════════════════════════════════════════════╝</div>
+                    <br />
+                    <div><span class="boot-tag">SYS</span> 初始化因果律矩阵 ..................... <span class="ok">[ OK ]</span></div>
+                    <div><span class="boot-tag">SYS</span> 加载时间线渲染器 ..................... <span class="ok">[ OK ]</span></div>
+                    <div><span class="boot-tag">NET</span> 同步 AI 模型节点 ..................... <span class="warn" id="modelSyncStatus">[ PENDING ]</span></div>
+                    <br />
+                    <div class="boot-ready">▶ 系统就绪，配置参数后点击「启动演化」</div>
+                    <div class="boot-sub">▶ 流式模式已激活 — AI 输出将实时渲染至终端</div>
+                    <br />
+                    <div class="log-cursor">root@WSE:~$&nbsp;</div>
+                  </div>
+
+                  <div id="streamPreview">
+                    <div class="sp-bar">
+                      <div class="sp-spinner"></div>
+                      <div class="sp-label" id="streamPreviewLabel">正在构筑时间线...</div>
+                      <div class="sp-count" id="streamPreviewCount">0 chars</div>
+                    </div>
+                    <div class="sp-wrap">
+                      <div id="streamRawText"></div>
+                    </div>
+                    <div class="sp-hint">
+                      <span>◈</span>
+                      AI 正在实时推演世界线 · 数据流解析中
+                      <span>◈</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel action-panel" id="actionPanel">
+                <div class="action-row">
+                  <button class="btn btn-primary" id="startBtn">
+                    <i class="fas fa-play-circle" id="startIcon"></i>
+                    <span id="startBtnText">启动演化</span>
+                  </button>
+
+                  <button class="btn btn-primary" id="nextBtn" disabled>
+                    <i class="fas fa-forward"></i>
+                    <span>推演下一纪元</span>
+                  </button>
+
+                  <button class="btn btn-danger" id="injectBtn" disabled>
+                    <i class="fas fa-bolt"></i>
+                    <span>注入干预事件</span>
+                  </button>
+
+                  <button class="btn btn-ghost" id="stopBtn">
+                    <i class="fas fa-stop-circle"></i>
+                    STOP
+                  </button>
+                </div>
+
+                <div class="footer-info">
+                  <i class="fas fa-wifi"></i>
+                  STREAM MODE · AI CORE:
+                  <span id="footerModel">—</span>
+                  · EPOCHS:
+                  <em id="footerEpochs">0</em>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- Token 页 -->
+        <div class="view" id="view-token">
+          <div class="view-heading">
+            <div class="view-kicker">TOKEN STATISTICS</div>
+            <h2>消耗统计仪表盘</h2>
+          </div>
+
+          <div class="token-panel">
+            <div class="tk-card">
+              <div class="tk-card-label">输入 Tokens</div>
+              <div class="tk-card-val" id="tkInputValue">0</div>
+              <div class="tk-card-sub">PROMPT TOKENS</div>
+            </div>
+
+            <div class="tk-card">
+              <div class="tk-card-label">输出 Tokens</div>
+              <div class="tk-card-val p" id="tkOutputValue">0</div>
+              <div class="tk-card-sub">COMPLETION TOKENS</div>
+            </div>
+
+            <div class="tk-card">
+              <div class="tk-card-label">合计 Tokens</div>
+              <div class="tk-card-val" id="tkTotalValue">0</div>
+              <div class="tk-card-sub">TOTAL TOKENS</div>
+            </div>
+
+            <div class="tk-card">
+              <div class="tk-card-label">平均 / 纪元</div>
+              <div class="tk-card-val g" id="tkAverageValue">0</div>
+              <div class="tk-card-sub">AVG PER EPOCH</div>
+            </div>
+
+            <div class="tk-card">
+              <div class="tk-card-label">推演轮次</div>
+              <div class="tk-card-val" id="tkEpochValue">0</div>
+              <div class="tk-card-sub">TOTAL EPOCHS</div>
+            </div>
+
+            <div class="tk-card">
+              <div class="tk-card-label">会话时长</div>
+              <div class="tk-card-val g" id="tkSessionValue">0s</div>
+              <div class="tk-card-sub">SESSION ELAPSED</div>
+            </div>
+          </div>
+
+          <div class="tk-history">
+            <div class="tk-history-header">
+              <i class="fas fa-history"></i>
+              <span class="tk-history-title">调用历史记录</span>
+              <span>CALL HISTORY</span>
+            </div>
+
+            <div class="tk-row header">
+              <span>#</span>
+              <span>模型</span>
+              <span>输入</span>
+              <span class="tk-hide">输出</span>
+              <span>合计</span>
+              <span class="tk-hide">时间</span>
+            </div>
+
+            <div class="tk-history-body" id="tokenHistoryBody">
+              <div class="tk-empty">
+                <i class="fas fa-hourglass"></i>
+                暂无推演记录，启动演化后将在此显示。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 设置说明页 -->
+        <div class="view" id="view-settings">
+          <div class="view-heading">
+            <div class="view-kicker">SYSTEM INFORMATION</div>
+            <h2>系统说明</h2>
+          </div>
+
+          <div class="panel settings-section">
+            <div class="panel-title">
+              <i class="fas fa-cog"></i>
+              快速设置
+            </div>
+            <p class="settings-text">
+              API 配置、模型参数、导出日志、停止生成等高频操作已移动到右上角小齿轮菜单。
+            </p>
+          </div>
+
+          <div class="panel settings-section">
+            <div class="panel-title">
+              <i class="fas fa-shield-alt"></i>
+              安全说明
+            </div>
+            <p class="settings-text">
+              前端保存 API Key 仅适合本地演示。生产部署请使用后端代理转发请求，避免真实密钥暴露。
+            </p>
+          </div>
+
+          <div class="panel settings-section">
+            <div class="panel-title">
+              <i class="fas fa-code"></i>
+              System Prompt
+            </div>
+            <pre class="prompt-preview" id="settingsPromptPreview"></pre>
+          </div>
+
+          <div class="panel settings-section">
+            <div class="panel-title">
+              <i class="fas fa-info-circle"></i>
+              关于 WSE
+            </div>
+            <p class="settings-text">
+              WSE v4.2.2 · World Simulation Engine，是一个三文件分离的纯前端 AI 世界线推演工具。
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 快速设置抽屉 -->
+  <div id="quickSettingsMask"></div>
+
+  <aside id="quickSettingsPanel">
+    <div class="qs-header">
+      <div>
+        <div class="qs-kicker">SYSTEM CONFIG</div>
+        <div class="qs-title">
+          <i class="fas fa-cog"></i>
+          快速设置
+        </div>
+      </div>
+
+      <button class="qs-close" id="quickSettingsCloseBtn">
+        <i class="fas fa-times"></i>
+      </button>
     </div>
-    <div class="sidebar-body" id="sb-content">
-      <!-- JS 动态填充 -->
+
+    <div class="qs-body">
+      <section class="qs-section">
+        <div class="qs-section-title">
+          <i class="fas fa-plug"></i>
+          API 端点配置
+        </div>
+
+        <div class="form-group">
+          <label for="cfgApiBase">
+            <i class="fas fa-link"></i>
+            Base URL
+          </label>
+          <input id="cfgApiBase" type="text" placeholder="https://api.openai.com" />
+        </div>
+
+        <div class="form-group">
+          <label for="cfgApiKey">
+            <i class="fas fa-key"></i>
+            API Key
+          </label>
+          <input id="cfgApiKey" type="text" placeholder="sk-..." />
+        </div>
+
+        <div class="info-tip">
+          <i class="fas fa-shield-alt"></i>
+          生产环境请使用后端代理隐藏真实 API Key。
+        </div>
+      </section>
+
+      <section class="qs-section">
+        <div class="qs-section-title">
+          <i class="fas fa-microchip"></i>
+          模型参数
+        </div>
+
+        <div class="form-group">
+          <label for="cfgDefaultModel">
+            <i class="fas fa-robot"></i>
+            默认模型
+          </label>
+          <input id="cfgDefaultModel" type="text" placeholder="gpt-5.5" />
+        </div>
+
+        <div class="form-group">
+          <label for="cfgTemperature">
+            <i class="fas fa-thermometer-half"></i>
+            Temperature
+          </label>
+          <div class="slider-row">
+            <input id="cfgTemperature" type="range" min="0" max="2" step="0.01" />
+            <span class="slider-val" id="cfgTemperatureValue">0.88</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="cfgMaxTokens">
+            <i class="fas fa-sort-amount-up"></i>
+            Max Tokens
+          </label>
+          <input id="cfgMaxTokens" type="text" placeholder="1400" />
+        </div>
+
+        <div class="qs-btn-row">
+          <button class="btn btn-primary" id="saveConfigBtn">
+            <i class="fas fa-save"></i>
+            保存配置
+          </button>
+
+          <button class="btn btn-ghost" id="resetConfigBtn">
+            <i class="fas fa-undo"></i>
+            默认配置
+          </button>
+        </div>
+
+        <button class="btn btn-purple qs-full-btn" id="reloadModelsBtn">
+          <i class="fas fa-sync-alt"></i>
+          重新同步模型列表
+        </button>
+      </section>
+
+      <section class="qs-section">
+        <div class="qs-section-title">
+          <i class="fas fa-terminal"></i>
+          世界线操作
+        </div>
+
+        <div class="qs-action-grid">
+          <button class="btn btn-ghost" id="exportLogBtn">
+            <i class="fas fa-download"></i>
+            导出日志
+          </button>
+
+          <button class="btn btn-ghost" id="drawerClearLogBtn">
+            <i class="fas fa-trash"></i>
+            清空日志
+          </button>
+
+          <button class="btn btn-danger" id="drawerStopBtn">
+            <i class="fas fa-stop-circle"></i>
+            停止生成
+          </button>
+
+          <button class="btn btn-danger" id="resetAllBtn">
+            <i class="fas fa-redo"></i>
+            重置世界线
+          </button>
+        </div>
+      </section>
+
+      <section class="qs-section">
+        <div class="qs-section-title">
+          <i class="fas fa-code"></i>
+          System Prompt 预览
+        </div>
+
+        <pre class="qs-code" id="quickPromptPreview"></pre>
+      </section>
+
+      <section class="qs-section">
+        <div class="qs-section-title">
+          <i class="fas fa-circle-info"></i>
+          关于
+        </div>
+
+        <div class="qs-about">
+          <div><span>WSE</span> v4.2.2</div>
+          <p>World Simulation Engine · 三文件分离 · 纯前端 AI 世界线推演工具。</p>
+        </div>
+      </section>
     </div>
-    <!-- Token 快览（底部常驻） -->
-    <div class="sidebar-footer">
-      <div class="sf-row">
-        <span class="sf-label"><i class="fas fa-arrow-right" style="margin-right:3px;color:var(--green);font-size:8px;"></i>输入</span>
-        <span class="sf-val" id="sf-in">0</span>
-      </div>
-      <div class="sf-row">
-        <span class="sf-label"><i class="fas fa-arrow-left" style="margin-right:3px;color:var(--purple);font-size:8px;"></i>输出</span>
-        <span class="sf-val" id="sf-out">0</span>
-      </div>
-      <div class="sf-row" style="margin-bottom:0;">
-        <span class="sf-label"><i class="fas fa-sigma" style="margin-right:3px;color:var(--cyan);font-size:8px;"></i>合计 Tokens</span>
-        <span class="sf-val" id="sf-tot">0</span>
-      </div>
-      <div class="sf-progress"><div class="sf-progress-bar" id="sf-prog" style="width:0%;"></div></div>
+  </aside>
+
+  <!-- 移动端操作栏 -->
+  <div id="action-bar-mobile">
+    <div class="ab-row">
+      <button class="btn btn-primary" id="startBtnMobile">
+        <i class="fas fa-play-circle" id="startIconMobile"></i>
+        <span id="startBtnTextMobile">启动演化</span>
+      </button>
+
+      <button class="btn btn-primary" id="nextBtnMobile" disabled>
+        <i class="fas fa-forward"></i>
+        下一纪元
+      </button>
+    </div>
+
+    <div class="ab-row3">
+      <button class="btn btn-danger" id="injectBtnMobile" disabled>
+        <i class="fas fa-bolt"></i>
+        注入事件
+      </button>
+
+      <button class="btn btn-ghost" id="mobileStopBtn">
+        <i class="fas fa-stop-circle"></i>
+        STOP
+      </button>
+
+      <button class="btn btn-ghost" id="mobileSettingsBtn">
+        <i class="fas fa-cog"></i>
+        CONFIG
+      </button>
+    </div>
+
+    <div class="ab-footer">
+      <i class="fas fa-wifi"></i>
+      <span id="footerModelMobile">—</span>
+      |
+      EPOCHS:
+      <em id="footerEpochsMobile">0</em>
     </div>
   </div>
 
-  <!-- ③ 三级菜单 -->
-  <div id="sidebar3">
-    <div class="s3-header">
-      <div class="s3-title" id="s3-title">文明参数</div>
-      <div class="s3-subtitle" id="s3-sub">INIT CONFIG</div>
-    </div>
-    <div class="s3-body" id="s3-body">
-      <!-- JS 动态填充 -->
-    </div>
-  </div>
-
-  <!-- MAIN -->
-  <div id="main">
-
-    <!-- Topbar -->
-    <div id="topbar">
-      <!-- 面包屑 -->
-      <div class="topbar-breadcrumb">
-        <i class="fas fa-atom" style="color:var(--cyan-dim);font-size:11px;"></i>
-        <span>WSE</span>
-        <span class="sep">/</span>
-        <span class="cur" id="bc-page">演化控制台</span>
-        <span id="bc-sub" style="color:var(--text-dim);"></span>
-      </div>
-      <div class="topbar-right">
-        <!-- Token 快览 badge -->
-        <div class="token-badge" onclick="nav1Click('token')">
-          <i class="fas fa-coins"></i>
-          <span class="tk-val" id="tokenBadgeVal">0</span>
-          <span style="font-size:9px;font-family:var(--font-head);letter-spacing:1px;">TOKENS</span>
-        </div>
-        <!-- 模型选择器 -->
-        <div class="model-selector-wrap" id="modelSelectorWrap">
-          <div class="model-selector-btn" onclick="toggleModelDropdown()">
-            <i class="fas fa-microchip" style="font-size:11px;flex-shrink:0;"></i>
-            <span class="m-label" id="mLabel">加载中...</span>
-            <i class="fas fa-chevron-down" style="font-size:9px;flex-shrink:0;"></i>
-          </div>
-          <div class="model-dropdown" id="modelDropdown">
-            <div class="md-header">SELECT AI MODEL</div>
-            <div class="model-list" id="modelList">
-              <div style="padding:10px 14px;font-size:13px;color:var(--text-dim);">正在同步模型列表...</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Page Content -->
-    <div id="page-content">
-
-      <!-- ════════ VIEW: 演化控制台 ════════ -->
-      <div class="view active" id="view-evo">
-
-        <!-- Header -->
-        <div class="page-header">
-          <div class="scan-line"></div>
-          <div class="header-badge"><i class="fas fa-atom"></i> WSE-v4.2.1 · NEURAL CORE ONLINE</div>
-          <h1 class="header-title">
-            世界模拟引擎
-            <span class="en">WORLD SIMULATION ENGINE</span>
-          </h1>
-          <p class="header-sub">// CAUSALITY MATRIX · EVOLUTION PROTOCOL · EPOCH STREAM //</p>
-        </div>
-
-        <!-- 主网格 -->
-        <div class="grid-main">
-
-          <!-- 左栏 -->
-          <div style="display:flex;flex-direction:column;gap:12px;">
-
-            <!-- 文明参数 -->
-            <div class="panel" id="panel-civ">
-              <button class="collapsible-btn panel-title" onclick="togglePanel('panel-civ')">
-                <i class="fas fa-globe-asia"></i> 文明初始参数
-                <span class="panel-badge">INIT CONFIG</span>
-                <i class="fas fa-chevron-down chev"></i>
-              </button>
-              <div class="coll-body" style="display:flex;flex-direction:column;gap:0;">
-                <div class="form-group">
-                  <label><i class="fas fa-signature"></i> 文明名称</label>
-                  <input type="text" id="civName" placeholder="例：亚特兰提斯 · 遗落之城" value="亚特兰提斯" />
-                </div>
-                <div class="form-group">
-                  <label><i class="fas fa-dna"></i> 文明类型</label>
-                  <select id="civType">
-                    <option value="魔法文明">✦ 魔法文明 — 以魔力为能源核心</option>
-                    <option value="纯科技文明">⚙ 纯科技文明 — 机械与信息主导</option>
-                    <option value="生物进化文明">⬡ 生物进化文明 — 基因工程改造</option>
-                    <option value="星际殖民文明">◈ 星际殖民文明 — 太空扩张型</option>
-                    <option value="意识上传文明">⬗ 意识上传文明 — 数字化存在</option>
-                    <option value="虚空召唤文明">☽ 虚空召唤文明 — 维度穿越掌控</option>
-                    <option value="混沌自然文明">❋ 混沌自然文明 — 与自然融合共生</option>
-                    <option value="时间操控文明">⧗ 时间操控文明 — 掌控时间流速</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label><i class="fas fa-mountain"></i> 资源富饶度</label>
-                  <div class="slider-row">
-                    <input type="range" id="resourceRich" min="0" max="100" value="65" oninput="updateSlider(this,'resourceVal')" />
-                    <span class="slider-val" id="resourceVal">65%</span>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label><i class="fas fa-users"></i> 初始人口规模</label>
-                  <div class="slider-row">
-                    <input type="range" id="initPop" min="0" max="100" value="50" oninput="updateSlider(this,'popVal')" />
-                    <span class="slider-val" id="popVal">50%</span>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label><i class="fas fa-shield-alt"></i> 军事潜力</label>
-                  <div class="slider-row">
-                    <input type="range" id="militaryPot" min="0" max="100" value="40" oninput="updateSlider(this,'milVal')" />
-                    <span class="slider-val" id="milVal">40%</span>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label><i class="fas fa-flask"></i> 科研 / 魔法指数</label>
-                  <div class="slider-row">
-                    <input type="range" id="techIndex" min="0" max="100" value="55" oninput="updateSlider(this,'techVal')" />
-                    <span class="slider-val" id="techVal">55%</span>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label><i class="fas fa-scroll"></i> 世界背景设定（可选）</label>
-                  <textarea id="worldBg" placeholder="描述该世界的特殊背景、地理环境或神话体系...&#10;例：被三颗恒星照耀的三体世界，海洋覆盖 90% 面积..."></textarea>
-                </div>
-              </div>
-            </div>
-
-            <!-- 干预事件 -->
-            <div class="panel" id="panel-event">
-              <button class="collapsible-btn panel-title" onclick="togglePanel('panel-event')">
-                <i class="fas fa-bolt"></i> 神迹 / 灾难干预
-                <span class="panel-badge">EVENT INJECT</span>
-                <i class="fas fa-chevron-down chev"></i>
-              </button>
-              <div class="coll-body">
-                <div class="chip-row">
-                  <span class="chip chip-m" onclick="setIntervention('上帝之手降临，赐予该文明前所未有的神圣启示与超凡力量')"><i class="fas fa-star"></i> 神圣启示</span>
-                  <span class="chip chip-m" onclick="setIntervention('一场无声的意识觉醒席卷全族，每个个体突破了认知极限')"><i class="fas fa-brain"></i> 意识觉醒</span>
-                  <span class="chip chip-d" onclick="setIntervention('一颗直径5公里的陨石命中文明核心城市，造成毁灭性破坏')"><i class="fas fa-meteor"></i> 陨石撞击</span>
-                  <span class="chip chip-d" onclick="setIntervention('一场致命的黑死级瘟疫在全境蔓延，死亡率高达70%')"><i class="fas fa-biohazard"></i> 黑死瘟疫</span>
-                  <span class="chip chip-d" onclick="setIntervention('外星入侵者突然出现，技术碾压本土文明，发动全面战争')"><i class="fas fa-rocket"></i> 外星入侵</span>
-                  <span class="chip chip-e" onclick="setIntervention('文明内部爆发意识形态革命，旧权力体系在一夜间土崩瓦解')"><i class="fas fa-fire"></i> 社会革命</span>
-                  <span class="chip chip-e" onclick="setIntervention('偶然发现了超时空传送门，通往一个资源极其丰沛的新世界')"><i class="fas fa-door-open"></i> 时空门</span>
-                  <span class="chip chip-e" onclick="setIntervention('与另一个高等文明首次建立联系，开启宇宙级外交与文化交流')"><i class="fas fa-satellite"></i> 星际接触</span>
-                </div>
-                <div class="form-group">
-                  <label><i class="fas fa-pencil-alt"></i> 自定义干预事件</label>
-                  <textarea id="intervention" placeholder="描述即将发生的神迹或灾难...&#10;例：一位拥有预见能力的先知出现，引领文明走向不同命运..." style="min-height:80px;"></textarea>
-                </div>
-                <div class="info-tip"><i class="fas fa-info-circle"></i> 干预事件将在下次推演时注入世界线</div>
-              </div>
-            </div>
-
-          </div><!-- /左栏 -->
-
-          <!-- 右栏 -->
-          <div style="display:flex;flex-direction:column;gap:12px;">
-
-            <!-- 状态矩阵 -->
-            <div class="panel" id="civStatusPanel">
-              <div class="panel-title"><i class="fas fa-chart-line"></i> 文明状态矩阵 <span class="panel-badge">CIVILIZATION STATUS</span></div>
-              <div class="stat-grid">
-                <div class="civ-stat">
-                  <div class="civ-stat-label"><i class="fas fa-hourglass-half"></i> 当前纪元</div>
-                  <div class="civ-stat-val" id="statEra">—</div>
-                </div>
-                <div class="civ-stat">
-                  <div class="civ-stat-label"><i class="fas fa-tachometer-alt"></i> 发展度</div>
-                  <div class="civ-stat-val g" id="statDev">—</div>
-                </div>
-                <div class="civ-stat">
-                  <div class="civ-stat-label"><i class="fas fa-exclamation-triangle"></i> 危机等级</div>
-                  <div class="civ-stat-val r" id="statCrisis">—</div>
-                </div>
-                <div class="civ-stat">
-                  <div class="civ-stat-label"><i class="fas fa-layer-group"></i> 推演轮次</div>
-                  <div class="civ-stat-val" id="statRound">0</div>
-                </div>
-              </div>
-              <div class="section-progress">
-                <div class="sp-header">
-                  <span class="sp-hd-label">CIVILIZATION PROGRESS</span>
-                  <span class="sp-hd-val" id="progressLabel">0%</span>
-                </div>
-                <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%;"></div></div>
-              </div>
-            </div>
-
-            <!-- 终端 -->
-            <div class="terminal">
-              <div class="terminal-bar">
-                <div class="t-dot t-r"></div>
-                <div class="t-dot t-y"></div>
-                <div class="t-dot t-g"></div>
-                <div class="t-title">WSE://CAUSALITY-LOG · EPOCH-STREAM · v4.2.1</div>
-                <div class="stream-label" id="streamLabel">
-                  <div class="stream-spinner"></div>
-                  <span>STREAMING</span>
-                  <span id="streamTokenCountBar" style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);"></span>
-                </div>
-                <button class="btn btn-ghost" onclick="clearLog()" style="padding:5px 10px;font-size:9px;margin-left:4px;">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </div>
-              <div class="terminal-body" id="terminalBody">
-                <!-- Boot -->
-                <div class="boot-text" id="bootMsg">
-                  <div style="color:var(--cyan-dim);">╔══════════════════════════════════════════════╗</div>
-                  <div style="color:var(--cyan-dim);">║ &nbsp;WORLD SIMULATION ENGINE · BOOT SEQUENCE &nbsp;║</div>
-                  <div style="color:var(--cyan-dim);">╚══════════════════════════════════════════════╝</div>
-                  <br>
-                  <div><span class="boot-tag">SYS</span> 初始化因果律矩阵 ..................... <span class="ok">[ OK ]</span></div>
-                  <div><span class="boot-tag">SYS</span> 加载时间线渲染器 ..................... <span class="ok">[ OK ]</span></div>
-                  <div><span class="boot-tag">SYS</span> 连接神经网络推演核心 ................. <span class="ok">[ OK ]</span></div>
-                  <div><span class="boot-tag">SYS</span> 校验量子随机性种子 ................... <span class="ok">[ OK ]</span></div>
-                  <div><span class="boot-tag">NET</span> 同步 AI 模型节点 ..................... <span class="warn">[ PENDING ]</span></div>
-                  <br>
-                  <div style="font-family:var(--font-ui);font-size:14px;color:var(--cyan);">▶ 系统就绪，配置参数后点击「启动演化」</div>
-                  <div style="font-family:var(--font-ui);font-size:13px;color:var(--text-dim);">▶ 流式模式已激活 — AI 输出将实时渲染至此终端</div>
-                  <br>
-                  <div class="log-cursor" style="font-family:var(--font-mono);color:var(--cyan);font-size:13px;">root@WSE:~$&nbsp;</div>
-                </div>
-                <!-- 流式预览层 -->
-                <div id="streamPreview">
-                  <div class="sp-bar">
-                    <div class="sp-spinner"></div>
-                    <div class="sp-label" id="spStatusLabel">正在构筑时间线...</div>
-                    <div class="sp-count" id="spTokenCount">0 chars</div>
-                  </div>
-                  <div class="sp-wrap"><div id="streamRawText"></div></div>
-                  <div class="sp-hint"><span>◈</span> AI 正在实时推演世界线 · 数据流解析中 <span>◈</span></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 桌面版操作区 -->
-            <div class="panel" id="action-bar-desktop" style="padding:16px 18px;">
-              <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-                <button class="btn btn-primary" id="startBtn" onclick="startEvolution()" style="flex:1;min-width:140px;">
-                  <i class="fas fa-play-circle" id="startIcon"></i><span id="startBtnText">启动演化</span>
-                </button>
-                <button class="btn btn-primary" id="nextBtn" onclick="nextEpoch()" style="flex:1;min-width:140px;" disabled>
-                  <i class="fas fa-forward"></i><span>推演下一纪元</span>
-                </button>
-                <button class="btn btn-danger" id="injectBtn" onclick="injectEvent()" style="flex:1;min-width:140px;" disabled>
-                  <i class="fas fa-bolt"></i><span>注入干预事件</span>
-                </button>
-                <button class="btn btn-ghost" onclick="resetAll()" style="min-width:88px;">
-                  <i class="fas fa-redo"></i> RESET
-                </button>
-              </div>
-              <div class="footer-info">
-                <i class="fas fa-wifi" style="margin-right:4px;color:var(--cyan-dim);"></i>
-                STREAM MODE · AI CORE: <span id="footerModel">—</span> · EPOCHS: <em id="footerEpochs">0</em>
-              </div>
-            </div>
-
-          </div><!-- /右栏 -->
-        </div><!-- /grid-main -->
-      </div><!-- /view-evo -->
-
-      <!-- ════════ VIEW: Token 统计 ════════ -->
-      <div class="view" id="view-token">
-
-        <div style="margin-bottom:20px;">
-          <div style="font-family:var(--font-head);font-size:11px;letter-spacing:3px;color:var(--text-dim);margin-bottom:6px;">TOKEN STATISTICS</div>
-          <div style="font-family:var(--font-head);font-size:24px;font-weight:700;color:var(--cyan);animation:neon-c 3s ease-in-out infinite;">消耗统计仪表盘</div>
-        </div>
-
-        <!-- 概要卡片 -->
-        <div class="token-panel">
-          <div class="tk-card">
-            <div class="tk-card-label"><i class="fas fa-arrow-right" style="margin-right:4px;color:var(--green);"></i>输入 Tokens</div>
-            <div class="tk-card-val" id="tk-in-val">0</div>
-            <div class="tk-card-sub">PROMPT TOKENS</div>
-          </div>
-          <div class="tk-card">
-            <div class="tk-card-label"><i class="fas fa-arrow-left" style="margin-right:4px;color:var(--purple);"></i>输出 Tokens</div>
-            <div class="tk-card-val p" id="tk-out-val">0</div>
-            <div class="tk-card-sub">COMPLETION TOKENS</div>
-          </div>
-          <div class="tk-card">
-            <div class="tk-card-label"><i class="fas fa-sigma" style="margin-right:4px;color:var(--cyan);"></i>合计 Tokens</div>
-            <div class="tk-card-val" id="tk-tot-val">0</div>
-            <div class="tk-card-sub">TOTAL TOKENS</div>
-          </div>
-          <div class="tk-card">
-            <div class="tk-card-label"><i class="fas fa-chart-bar" style="margin-right:4px;color:var(--yellow);"></i>平均 / 纪元</div>
-            <div class="tk-card-val g" id="tk-avg-val">0</div>
-            <div class="tk-card-sub">AVG PER EPOCH</div>
-          </div>
-          <div class="tk-card">
-            <div class="tk-card-label"><i class="fas fa-layer-group" style="margin-right:4px;color:var(--cyan);"></i>推演轮次</div>
-            <div class="tk-card-val" id="tk-epoch-val">0</div>
-            <div class="tk-card-sub">TOTAL EPOCHS</div>
-          </div>
-          <div class="tk-card">
-            <div class="tk-card-label"><i class="fas fa-clock" style="margin-right:4px;color:var(--text-dim);"></i>会话时长</div>
-            <div class="tk-card-val g" id="tk-time-val">0s</div>
-            <div class="tk-card-sub">SESSION ELAPSED</div>
-          </div>
-        </div>
-
-        <!-- 历史记录表格 -->
-        <div class="tk-history">
-          <div class="tk-history-header">
-            <i class="fas fa-history" style="color:var(--cyan-dim);"></i>
-            <span class="tk-history-title">调用历史记录</span>
-            <span style="font-family:var(--font-head);font-size:9px;letter-spacing:1.5px;color:var(--text-dim);">CALL HISTORY</span>
-          </div>
-          <!-- 表头 -->
-          <div class="tk-row header">
-            <span>#</span>
-            <span>模型</span>
-            <span>输入</span>
-            <span class="tk-hide">输出</span>
-            <span>合计</span>
-            <span class="tk-hide">时间</span>
-          </div>
-          <div class="tk-history-body" id="tk-tbody">
-            <div class="tk-empty">
-              <i class="fas fa-hourglass" style="margin-right:8px;color:var(--text-dim);"></i>
-              暂无推演记录，启动演化后将在此显示
-            </div>
-          </div>
-        </div>
-
-        <!-- 底部提示 -->
-        <div style="margin-top:16px;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
-          <div style="font-family:var(--font-head);font-size:10px;letter-spacing:2px;color:var(--text-dim);margin-bottom:8px;">费用估算（仅供参考）</div>
-          <div style="font-family:var(--font-ui);font-size:13px;color:var(--text-mid);line-height:1.8;">
-            Token 计费因模型而异。本工具使用免费 API 端点（<span style="color:var(--cyan);">sk-free</span>），实际不产生费用。
-            统计数据为近似估算值，输入 token 数基于上下文字符数 ÷ 4 估算，输出 token 数来自流式响应实时累计。
-          </div>
-        </div>
-
-      </div><!-- /view-token -->
-
-      <!-- ════════ VIEW: 系统设置 ════════ -->
-      <div class="view" id="view-settings">
-
-        <div style="margin-bottom:20px;">
-          <div style="font-family:var(--font-head);font-size:11px;letter-spacing:3px;color:var(--text-dim);margin-bottom:6px;">SYSTEM SETTINGS</div>
-          <div style="font-family:var(--font-head);font-size:24px;font-weight:700;color:var(--cyan);animation:neon-c 3s ease-in-out infinite;">系统设置</div>
-        </div>
-
-        <!-- API 设置 -->
-        <div class="panel settings-section">
-          <div class="panel-title"><i class="fas fa-plug"></i> API 端点配置</div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Base URL</div>
-              <div class="settings-row-sub">OpenAI 兼容接口基础地址</div>
-            </div>
-            <span class="settings-val">https://ai.hhhl.cc</span>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Endpoint</div>
-              <div class="settings-row-sub">聊天补全接口</div>
-            </div>
-            <span class="settings-val">/v1/chat/completions</span>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">API Key</div>
-              <div class="settings-row-sub">鉴权密钥（已内置）</div>
-            </div>
-            <span class="settings-val">sk-free</span>
-          </div>
-          <div class="settings-row" style="border-bottom:none;">
-            <div>
-              <div class="settings-row-label">Stream Mode</div>
-              <div class="settings-row-sub">实时流式输出</div>
-            </div>
-            <span class="settings-val" style="color:var(--green);">已启用 ✓</span>
-          </div>
-        </div>
-
-        <!-- 模型设置 -->
-        <div class="panel settings-section">
-          <div class="panel-title"><i class="fas fa-microchip"></i> 模型配置</div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">默认模型</div>
-              <div class="settings-row-sub">系统启动时自动选中的模型</div>
-            </div>
-            <span class="settings-val" style="color:var(--purple);">gpt-5.5</span>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-row-label">Temperature</div>
-              <div class="settings-row-sub">创意温度（越高越发散）</div>
-            </div>
-            <span class="settings-val">0.88</span>
-          </div>
-          <div class="settings-row" style="border-bottom:none;">
-            <div>
-              <div class="settings-row-label">Max Tokens</div>
-              <div class="settings-row-sub">单次最大输出 token 数</div>
-            </div>
-            <span class="settings-val">1400</span>
-          </div>
-        </div>
-
-        <!-- 提示词 -->
-        <div class="panel settings-section">
-          <div class="panel-title"><i class="fas fa-code"></i> System Prompt 预览</div>
-          <div style="background:var(--bg4);border:1px solid var(--border);border-radius:5px;padding:14px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);line-height:1.8;max-height:200px;overflow-y:auto;white-space:pre-wrap;">你是一个世界模拟引擎（World Simulation Engine），根据用户给出的文明初始条件，严密、逻辑清晰且充满史诗感地推演该世界接下来的发展历程。
-
-每次推演请严格按照以下JSON格式输出：
-{
-  "era": "纪元X · 时代名称",
-  "year_range": "年代范围",
-  "core_event": "核心事件描述",
-  "dev_progress": 0-100,
-  "crisis": "潜在危机",
-  "crisis_level": "LOW|MEDIUM|HIGH|CRITICAL",
-  "achievement": "文明成就",
-  "population": "人口估算"
-}</div>
-        </div>
-
-        <!-- 关于 -->
-        <div class="panel">
-          <div class="panel-title"><i class="fas fa-info-circle"></i> 关于 WSE</div>
-          <div style="font-family:var(--font-ui);font-size:13px;color:var(--text-mid);line-height:1.9;">
-            <div style="margin-bottom:8px;">
-              <span style="font-family:var(--font-head);color:var(--cyan);letter-spacing:2px;">WSE v4.2.1</span>
-              &nbsp;·&nbsp; World Simulation Engine
-            </div>
-            <div>基于 OpenAI 兼容 API 的 AI 驱动世界演化引擎。支持多文明类型、干预事件注入、实时流式推演与 Token 消耗统计。</div>
-            <div style="margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
-              HTML + CSS + JS · 三文件分离 · 纯前端无后端 · 赛博朋克 UI
-            </div>
-          </div>
-        </div>
-
-      </div><!-- /view-settings -->
-
-    </div><!-- /page-content -->
-  </div><!-- /main -->
-</div><!-- /shell -->
-
-<!-- ════ 移动端底部操作栏 ════ -->
-<div id="action-bar-mobile">
-  <div class="ab-row">
-    <button class="btn btn-primary" id="startBtnM" onclick="startEvolution()">
-      <i class="fas fa-play-circle" id="startIconM"></i><span id="startBtnTextM">启动演化</span>
-    </button>
-    <button class="btn btn-primary" id="nextBtnM" onclick="nextEpoch()" disabled>
-      <i class="fas fa-forward"></i><span>下一纪元</span>
-    </button>
-  </div>
-  <div class="ab-row3">
-    <button class="btn btn-danger" id="injectBtnM" onclick="injectEvent()" disabled style="font-size:10px;">
-      <i class="fas fa-bolt"></i><span>注入事件</span>
-    </button>
-    <button class="btn btn-ghost" onclick="resetAll()" style="font-size:10px;">
-      <i class="fas fa-redo"></i> RESET
-    </button>
-    <button class="btn btn-ghost" onclick="clearLog()" style="font-size:10px;">
-      <i class="fas fa-trash"></i> CLEAR
-    </button>
-  </div>
-  <div class="ab-footer">
-    <i class="fas fa-wifi" style="color:var(--cyan-dim);"></i>
-    <span id="footerModelM" style="color:var(--purple);">—</span>
-    &nbsp;|&nbsp; EPOCHS: <em style="color:var(--cyan);font-style:normal;" id="footerEpochsM">0</em>
-  </div>
-</div>
-
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
