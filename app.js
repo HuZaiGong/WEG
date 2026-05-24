@@ -858,7 +858,12 @@ async function callAIStream(messages) {
     });
 
     if (!response.ok) {
-      const error new reader-8');
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error?.message || `HTTP ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
 
     let fullContent = '';
     let inputTokens = 0;
@@ -882,8 +887,12 @@ async function callAIStream(messages) {
         if (trimmed === 'data: [DONE]') continue;
 
         try {
-          const json = =.?.delta?. || (delta {
-Chunk(delta);
+          const json = JSON.parse(trimmed.slice(5).trim());
+          const delta = json.choices?.[0]?.delta?.content || '';
+
+          if (delta) {
+            fullContent += delta;
+            appendStreamChunk(delta);
             outputTokens += Math.ceil(delta.length / 4);
           }
 
