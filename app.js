@@ -8,11 +8,11 @@
 ========================================================================== */
 
 const DEFAULT_CONFIG = {
-  apiBase: 'https://ai.hhhl.cc',
-  apiKey: 'sk-free',
+  apiBase: 'https://ai2.hhhl.cc',
+  apiKey: 'sk-6BITJKu8eZpA0IsRAdbFSzoecshhBtTU',
   defaultModel: 'gpt-5.5',
   temperature: 0.88,
-  maxTokens: 1400,
+  maxTokens: 8192,
 };
 
 const STORAGE_KEYS = {
